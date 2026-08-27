@@ -1,0 +1,16 @@
+# OS & System Junk
+.DS_Store
+Thumbs.db
+*:Zone.Identifier*
+
+# Environments & Dependencies
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+
+# Scratch & Logs
+scratch/
+*.log
+.gemini/
+.antigravity/

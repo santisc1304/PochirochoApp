@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Pochirocho - App de Seguimiento Menstrual</title>
+
+  <!-- PWA & Mobile Web App Meta Tags -->
+  <meta name="theme-color" content="#02040a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pochirocho" />
+  <link rel="apple-touch-icon" href="assets/avatares/Amy/Feliz_Amy.png" />
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <!-- Ambient Color Glows Outside Frame -->
+  <div class="ambient-background"></div>
+
+  <!-- Main iPhone Mockup Device Frame Container -->
+  <div class="iphone-wrapper">
+    <div class="iphone-device">
+
+      <!-- iPhone Dynamic Island Notch & Home Indicator -->
+      <div class="dynamic-island"></div>
+      <div class="home-indicator"></div>
+
+      <!-- Contenedor Flotante de Notificación In-App de Logros -->
+      <div id="achievement-toast-container"></div>
+
+      <!-- ===================================================================
+           VIEW 0: ONBOARDING (PRIMER INGRESO & CONFIGURACIÓN INICIAL)
+           =================================================================== -->
+      <div class="app-view" id="view-onboarding">
+        <!-- Fondo ambiental y contenedor de elementos cayendo dinámicos (Multi-tema) -->
+        <div class="onboarding-ambient-bg"></div>
+        <div class="onboarding-falling-container" id="ob-falling-container"></div>
+
+        <!-- Encabezado de Progreso y Navegación -->
+        <div class="onboarding-header">
+          <div class="ob-progress-bar">
+            <div class="ob-progress-step active" data-step="1"></div>
+            <div class="ob-progress-step" data-step="2"></div>
+            <div class="ob-progress-step" data-step="3"></div>
+            <div class="ob-progress-step" data-step="4"></div>
+            <div class="ob-progress-step" data-step="5"></div>
+            <div class="ob-progress-step" data-step="6"></div>
+            <div class="ob-progress-step" data-step="7"></div>
+          </div>
+          <div class="ob-nav-top-row">
+            <button class="ob-btn-back" id="btn-ob-back" style="visibility: hidden;">
+              <span class="material-symbols-outlined">arrow_back_ios</span>
+              <span>Atrás</span>
+            </button>
+            <span class="ob-step-counter" id="ob-step-counter">Paso 1 de 7</span>
+          </div>
+        </div>
+
+        <div class="onboarding-body" id="ob-steps-container">
+          
+          <!-- PASO 1: Tono & Tema Visual de la App (Igual a Pantalla de Ajustes) -->
+          <div class="onboarding-step active" id="ob-step-1">
+            <div class="ob-step-centered-content">
+              <h2 class="ob-title">Personaliza tu Universo 🎨</h2>
+              <p class="ob-subtitle">Elige cómo deseas que la app adapte sus colores en cada fase de tu ciclo o elige un tono fijo.</p>
+              
+              <!-- Selector de Modo de Color -->
+              <div class="settings-mode-tabs-row" style="margin-bottom: 0.85rem;">
+                <button type="button" class="settings-mode-tab-btn active" id="ob-tab-mode-phase" onclick="setObThemeMode('auto_by_phase')">
+                  <span>🔄 Por Fase del Ciclo</span>
+                </button>
+                <button type="button" class="settings-mode-tab-btn" id="ob-tab-mode-fixed" onclick="setObThemeMode('fixed')">
+                  <span>🎨 Tono Fijo General</span>
+                </button>
+              </div>
+
+              <!-- Modo 1: Por Fase del Ciclo -->
+              <div id="ob-theme-phase-container" class="settings-phase-themes-list" style="display: flex;">
+                
+                <!-- Menstrual -->
+                <div class="settings-phase-item-card" data-ob-phase="Menstrual">
+                  <div class="settings-phase-item-header">
+                    <span class="settings-phase-item-title">
+                      <span>🩸</span>
+                      <span>Fase Menstrual</span>
+                    </span>
+                    <span class="settings-phase-badge-hint" style="font-size:0.68rem; color:#cbd5e1;">Días 1 - 5</span>
+                  </div>
+                  <div class="settings-phase-color-picker-row" id="ob-picker-menstrual">
+                    <!-- Botones de colores inyectados por JS -->
+                  </div>
+                </div>
+
+                <!-- Folicular -->
+                <div class="settings-phase-item-card" data-ob-phase="Folicular">
+                  <div class="settings-phase-item-header">
+                    <span class="settings-phase-item-title">
+                      <span>🌱</span>
+                      <span>Fase Folicular</span>
+                    </span>
+                    <span class="settings-phase-badge-hint" style="font-size:0.68rem; color:#cbd5e1;">Días 6 - 11</span>
+                  </div>
+                  <div class="settings-phase-color-picker-row" id="ob-picker-folicular">
+                    <!-- Botones de colores inyectados por JS -->
+                  </div>
+                </div>
+
+                <!-- Ovulatoria -->
+                <div class="settings-phase-item-card" data-ob-phase="Ovulatoria">
+                  <div class="settings-phase-item-header">
+                    <span class="settings-phase-item-title">
+                      <span>✨</span>
+                      <span>Fase Ovulatoria</span>
+                    </span>
+                    <span class="settings-phase-badge-hint" style="font-size:0.68rem; color:#cbd5e1;">Días 12 - 16</span>
+                  </div>
+                  <div class="settings-phase-color-picker-row" id="ob-picker-ovulatoria">
+                    <!-- Botones de colores inyectados por JS -->
+                  </div>
+                </div>
+
+                <!-- Lútea -->
+                <div class="settings-phase-item-card" data-ob-phase="Lutea">
+                  <div class="settings-phase-item-header">
+                    <span class="settings-phase-item-title">
+                      <span>🌙</span>
+                      <span>Fase Lútea</span>
+                    </span>
+                    <span class="settings-phase-badge-hint" style="font-size:0.68rem; color:#cbd5e1;">Días 17 - 28</span>
+                  </div>
+                  <div class="settings-phase-color-picker-row" id="ob-picker-lutea">
+                    <!-- Botones de colores inyectados por JS -->
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Modo 2: Tono Fijo General -->
+              <div id="ob-theme-fixed-container" class="settings-theme-grid" style="display: none;">
+                <!-- Cards de tema fijo inyectadas por JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 2: Mascota Acompañante -->
+          <div class="onboarding-step" id="ob-step-2">
+            <div class="ob-step-centered-content">
+              <h2 class="ob-title">Elige a tu Compañero 🐾</h2>
+              <p class="ob-subtitle">Te acompañará con consejos, alertas de salud y mucho amor diario.</p>
+              
+              <div class="ob-pets-grid" id="ob-pets-grid">
+                <div class="ob-pet-card active" data-pet="amy" onclick="selectObPet('amy', this)">
+                  <div class="ob-pet-img-wrap">
+                    <img src="assets/avatares/Amy/Normal_Amy.png" alt="Manola" />
+                  </div>
+                  <div class="ob-pet-info">
+                    <span class="ob-pet-name">Manola la Erizo 🦔</span>
+                    <span class="ob-pet-desc">Tierna, dulce y siempre lista para acurrucarse en días sensibles.</span>
+                  </div>
+                </div>
+                <div class="ob-pet-card" data-pet="luffy" onclick="selectObPet('luffy', this)">
+                  <div class="ob-pet-img-wrap">
+                    <img src="assets/avatares/Luffy/Normal_Luffy.png" alt="Luffy" />
+                  </div>
+                  <div class="ob-pet-info">
+                    <span class="ob-pet-name">Luffy el Monito 🐒</span>
+                    <span class="ob-pet-desc">Enérgico, alegre, muy ágil y positivo para motivarte.</span>
+                  </div>
+                </div>
+                <div class="ob-pet-card" data-pet="maomao" onclick="selectObPet('maomao', this)">
+                  <div class="ob-pet-img-wrap">
+                    <img src="assets/avatares/MaoMao/Normal_Mao.png" alt="MaoMao" />
+                  </div>
+                  <div class="ob-pet-info">
+                    <span class="ob-pet-name">MaoMao la Gatita 🐱</span>
+                    <span class="ob-pet-desc">Curiosa, cariñosa y amante del descanso en la fase menstrual.</span>
+                  </div>
+                </div>
+                <div class="ob-pet-card" data-pet="pipo" onclick="selectObPet('pipo', this)">
+                  <div class="ob-pet-img-wrap">
+                    <img src="assets/avatares/Pipo/Normal_Pipo.png" alt="Pipo" />
+                  </div>
+                  <div class="ob-pet-info">
+                    <span class="ob-pet-name">Pipo el Pingüino 🐧</span>
+                    <span class="ob-pet-desc">Empático, tierno y fan del calor y las compresas en los cólicos.</span>
+                  </div>
+                </div>
+                <div class="ob-pet-card" data-pet="naveen" onclick="selectObPet('naveen', this)">
+                  <div class="ob-pet-img-wrap">
+                    <img src="assets/avatares/Naveen/Normal_Naveen.png" alt="Naveen" />
+                  </div>
+                  <div class="ob-pet-info">
+                    <span class="ob-pet-name">Naveen el Ranito 🐸</span>
+                    <span class="ob-pet-desc">Calmado, experto en meditación, respiración pélvica y paz mental.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 3: Nombre & Calendario Interactivo de LMP -->
+          <div class="onboarding-step" id="ob-step-3">
+            <div class="ob-step-centered-content">
+              <h2 class="ob-title">¿Cómo te llamas y cuándo inició tu último ciclo? 🌸</h2>
+              <p class="ob-subtitle">Queremos personalizar toda la experiencia y calibrar tu reloj biológico.</p>
+              
+              <div class="ob-form-group">
+                <label class="ob-field-label">Tu Nombre o Apodo Cariñoso</label>
+                <div class="ob-input-icon-wrap">
+                  <span class="material-symbols-outlined ob-input-icon">person</span>
+                  <input type="text" id="ob-input-name" class="ob-input-text" placeholder="Ej: Ana" value="Ana" />
+                </div>
+              </div>
+
+              <div class="ob-form-group" style="margin-top: 1rem;">
+                <label class="ob-field-label">Fecha de Inicio de tu Última Menstruación (LMP)</label>
+                
+                <!-- Calendario Interactivo Embebido Estilo Tracker -->
+                <div class="ob-calendar-container">
+                  <div class="ob-calendar-nav">
+                    <button type="button" class="ob-cal-nav-btn" onclick="prevObCalMonth()">
+                      <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <span class="ob-cal-month-title" id="ob-cal-month-title">Agosto 2026</span>
+                    <button type="button" class="ob-cal-nav-btn" onclick="nextObCalMonth()">
+                      <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="ob-calendar-weekdays">
+                    <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+                  </div>
+                  <div class="ob-calendar-grid" id="ob-calendar-grid">
+                    <!-- Días inyectados interactivamente por JS -->
+                  </div>
+                </div>
+
+                <div class="ob-cal-selected-badge" id="ob-cal-selected-display">
+                  <span class="material-symbols-outlined" style="font-size: 1rem; color: var(--rose-accent);">event_available</span>
+                  <span id="ob-cal-selected-text">Selecciona el día en el calendario</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 4: Duración de Ciclo y Período (Sliders Hácticos) -->
+          <div class="onboarding-step" id="ob-step-4">
+            <div class="ob-step-centered-content">
+              <h2 class="ob-title">Duración de tu Ciclo ⏱️</h2>
+              <p class="ob-subtitle">Ajusta los días promedio de tu ciclo menstrual y la duración de tu sangrado.</p>
+              
+              <div class="ob-slider-card">
+                <div class="ob-slider-header">
+                  <span class="ob-slider-title">Duración Total del Ciclo</span>
+                  <span class="ob-slider-val-badge" id="ob-val-cycle">28 días</span>
+                </div>
+                <input type="range" id="ob-slider-cycle" min="21" max="45" value="28" class="ob-range-slider" oninput="updateObCycleSlider(this.value)" />
+                <div class="ob-slider-labels">
+                  <span>21 días (Corto)</span>
+                  <span>28 días (Promedio)</span>
+                  <span>45 días (Largo)</span>
+                </div>
+              </div>
+
+              <div class="ob-slider-card" style="margin-top: 1.25rem;">
+                <div class="ob-slider-header">
+                  <span class="ob-slider-title">Duración del Sangrado (Período)</span>
+                  <span class="ob-slider-val-badge" id="ob-val-period" style="color: var(--rose-accent);">5 días</span>
+                </div>
+                <input type="range" id="ob-slider-period" min="2" max="10" value="5" class="ob-range-slider" oninput="updateObPeriodSlider(this.value)" />
+                <div class="ob-slider-labels">
+                  <span>2 días (Ligero)</span>
+                  <span>5 días (Estándar)</span>
+                  <span>10 días (Extenso)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 5: Regularidad, Método & Datos Clínicos para el Algoritmo -->
+          <div class="onboarding-step" id="ob-step-5">
+            <div class="ob-step-centered-content">
+              <h2 class="ob-title">Método y Regularidad Hormonal 🛡️</h2>
+              <p class="ob-subtitle">Estos datos clínicos permiten al modelo probabilístico (Kalman & DLM) optimizar su precisión.</p>
+              
+              <!-- 1. Regularidad -->
+              <div class="ob-clinical-group">
+                <label class="ob-field-label">1. ¿Cómo describirías la regularidad de tus ciclos?</label>
+                <div class="ob-pills-row">
+                  <button type="button" class="ob-pill active" data-reg="Regular" onclick="selectObRegularity('Regular', this)">Muy Regular (±1-2d)</button>
+                  <button type="button" class="ob-pill" data-reg="Ligeramente" onclick="selectObRegularity('Ligeramente', this)">Variable (±3-5d)</button>
+                  <button type="button" class="ob-pill" data-reg="Irregular" onclick="selectObRegularity('Irregular', this)">Irregular / SOP</button>
+                </div>
+              </div>
+
+              <!-- 2. Método Anticonceptivo (Píldoras Interactivas Glassmorphic) -->
+              <div class="ob-clinical-group" style="margin-top: 1rem;">
+                <label class="ob-field-label">2. Método Anticonceptivo Actual</label>
+                <div class="ob-pills-row ob-pills-wrap" id="ob-method-pills">
+                  <button type="button" class="ob-pill active" data-method="Ninguno" onclick="selectObMethod('Ninguno', this)">🌿 Ciclo Natural</button>
+                  <button type="button" class="ob-pill" data-method="Pastillas" onclick="selectObMethod('Pastillas', this)">💊 Pastillas</button>
+                  <button type="button" class="ob-pill" data-method="Condón" onclick="selectObMethod('Condón', this)">🛡️ Preservativo</button>
+                  <button type="button" class="ob-pill" data-method="DIU_Hormonal" onclick="selectObMethod('DIU_Hormonal', this)">🧲 DIU Hormonal</button>
+                  <button type="button" class="ob-pill" data-method="DIU_Cobre" onclick="selectObMethod('DIU_Cobre', this)">🧲 DIU Cobre</button>
+                  <button type="button" class="ob-pill" data-method="Implante" onclick="selectObMethod('Implante', this)">💉 Implante</button>
+                </div>
+              </div>
+
+              <!-- 3. Síntoma Principal -->
+              <div class="ob-clinical-group" style="margin-top: 1rem;">
+                <label class="ob-field-label">3. Síntoma o molestia que más te gustaría monitorear</label>
+                <div class="ob-pills-row ob-pills-wrap">
+                  <button type="button" class="ob-pill active" data-symptom="Cólicos" onclick="selectObSymptom('Cólicos', this)">⚡ Cólicos / Dolor pélvico</button>
+                  <button type="button" class="ob-pill" data-symptom="SPM" onclick="selectObSymptom('SPM', this)">🌪️ Humor / SPM</button>
+                  <button type="button" class="ob-pill" data-symptom="Migrañas" onclick="selectObSymptom('Migrañas', this)">🧠 Migrañas</button>
+                  <button type="button" class="ob-pill" data-symptom="Fatiga" onclick="selectObSymptom('Fatiga', this)">😴 Fatiga / Sueño</button>
+                  <button type="button" class="ob-pill" data-symptom="Ninguno" onclick="selectObSymptom('Ninguno', this)">✨ Leve / Sin dolor</button>
+                </div>
+              </div>
+
+              <!-- 4. Objetivo Principal -->
+              <div class="ob-clinical-group" style="margin-top: 1rem;">
+                <label class="ob-field-label">4. ¿Cuál es tu objetivo principal en Pochirocho?</label>
+                <div class="ob-pills-row ob-pills-wrap">
+                  <button type="button" class="ob-pill active" data-goal="Bienestar General" onclick="selectObGoal('Bienestar General', this)">🌸 Bienestar & Salud</button>
+                  <button type="button" class="ob-pill" data-goal="Fertilidad" onclick="selectObGoal('Fertilidad', this)">✨ Conocer Ventana Fértil</button>
+                  <button type="button" class="ob-pill" data-goal="Alivio" onclick="selectObGoal('Alivio', this)">🧘‍♀️ Rutinas de Alivio</button>
+                  <button type="button" class="ob-pill" data-goal="Anticoncepcion" onclick="selectObGoal('Anticoncepcion', this)">⏰ Recordatorio Anticonceptivo</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- PASO 6: Apple HealthKit Genuino & Protección Biométrica Real -->
+          <div class="onboarding-step" id="ob-step-6">
+            <div class="ob-step-centered-content">
+              <h2 class="ob-title">Sincronización y Privacidad 🔒</h2>
+              <p class="ob-subtitle">Integración con estándares nativos de Apple iOS y privacidad de datos cero-conocimiento.</p>
+              
+              <!-- Tarjeta Apple HealthKit Real -->
+              <div class="ob-apple-health-card">
+                <div class="ob-health-card-header">
+                  <div class="ob-apple-health-icon">
+                    <span class="material-symbols-outlined" style="color: #ff2d55; font-size: 1.6rem;">favorite</span>
+                  </div>
+                  <div class="ob-health-card-title-group">
+                    <span class="ob-health-title">Apple Health (Salud iOS)</span>
+                    <span class="ob-health-status-badge" id="ob-health-status-badge">No conectado</span>
+                  </div>
+                </div>
+                <p class="ob-health-desc">
+                  Permite a Pochirocho leer tus ciclos previos registrados en tu iPhone para entrenar el modelo predictivo desde el primer día.
+                </p>
+                <button type="button" class="ob-btn-health-connect" id="btn-ob-connect-health" onclick="triggerAppleHealthPermissionModal()">
+                  <span class="material-symbols-outlined">sync</span>
+                  <span id="btn-ob-health-text">Conectar con Apple Health</span>
+                </button>
+              </div>
+
+              <!-- Tarjeta Protección Biométrica (Face ID / Touch ID) -->
+              <div class="ob-biometric-card">
+                <div class="ob-biometric-main-row">
+                  <div class="ob-biometric-icon-box">
+                    <span class="material-symbols-outlined" style="font-size: 1.7rem; color: var(--cyan-accent); display: block;">face_unlock</span>
+                  </div>
+                  <div class="ob-biometric-info-col">
+                    <span class="ob-biometric-title">Protección Biométrica Local</span>
+                    <span class="ob-biometric-sub" id="ob-biometric-status-sub">Desactivada (Toca para activar)</span>
+                  </div>
+                  <label class="ob-switch" title="Activar Face ID">
+                    <input type="checkbox" id="ob-faceid-checkbox" onchange="toggleObFaceId(this.checked)">
+                    <span class="ob-slider-round"></span>
+                  </label>
+                </div>
+                <div class="ob-biometric-action-row">
+                  <button type="button" class="ob-btn-test-biometric" onclick="triggerFaceIdScanAnimation()">
+                    <span class="material-symbols-outlined" style="font-size: 0.95rem;">fingerprint</span>
+                    <span>Probar Autenticación Face ID</span>
+                  </button>
+                  <span class="ob-privacy-badge">🔒 Zero-Knowledge Local</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- PASO 7: Celebración y Resumen Centrado (SIN CÍRCULO EN EL AVATAR) -->
+          <div class="onboarding-step" id="ob-step-7">
+            <div class="ob-celebration-centered-container">
+              
+              <!-- Avatar Limpio y Transparente en Alta Resolución sin círculo de fondo -->
+              <div class="ob-celebration-avatar-wrap">
+                <img src="assets/avatares/Amy/Feliz_Amy.png" id="ob-final-avatar" class="ob-final-avatar-img" alt="Avatar Celebrando" />
+              </div>
+
+              <div class="ob-celebration-text-box">
+                <h2 class="ob-celebration-title" id="ob-final-title">¡Todo Listo para Cuidarte, Ana! ✨</h2>
+                <p class="ob-celebration-quote" id="ob-final-msg">
+                  "Soy Manola la Erizo 🦔. He calibrado tus ciclos y personalizado tu aplicación. ¡Vamos a empezar juntas!"
+                </p>
+              </div>
+
+              <!-- Tarjeta de Resumen Visual de Configuración -->
+              <div class="ob-summary-card">
+                <div class="ob-summary-item">
+                  <span class="ob-summary-label">Mascota</span>
+                  <span class="ob-summary-val" id="ob-sum-pet">Manola 🦔</span>
+                </div>
+                <div class="ob-summary-item">
+                  <span class="ob-summary-label">Ciclo</span>
+                  <span class="ob-summary-val" id="ob-sum-cycle">28 días</span>
+                </div>
+                <div class="ob-summary-item">
+                  <span class="ob-summary-label">Fase Actual</span>
+                  <span class="ob-summary-val" id="ob-sum-phase" style="color: var(--gold-accent);">Ovulatoria ✨</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer con Botón Principal -->
+        <div class="onboarding-footer">
+          <button type="button" class="ob-btn-primary" id="btn-ob-next">
+            <span>Continuar</span>
+            <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Nativo Simulado de Permisos Apple HealthKit -->
+      <div class="apple-health-modal-overlay" id="modal-apple-health" style="display: none;">
+        <div class="apple-health-dialog-sheet animate-slide-up">
+          <div class="apple-health-dialog-header">
+            <span class="apple-health-app-icon">❤️</span>
+            <h3>Permisos de Salud</h3>
+            <span class="apple-health-sub">"Pochirocho" solicita acceso a tus datos de Salud de Apple</span>
+          </div>
+          <div class="apple-health-permissions-list">
+            <div class="apple-perm-item">
+              <div class="apple-perm-text">
+                <strong>Ciclo Menstrual e Historial</strong>
+                <span>Lectura de fechas de inicio y fin de períodos</span>
+              </div>
+              <span class="material-symbols-outlined" style="color: #10b981;">check_circle</span>
+            </div>
+            <div class="apple-perm-item">
+              <div class="apple-perm-text">
+                <strong>Temperatura Basal & Síntomas</strong>
+                <span>Calibración de ventana fértil y dolor pélvico</span>
+              </div>
+              <span class="material-symbols-outlined" style="color: #10b981;">check_circle</span>
+            </div>
+          </div>
+          <div class="apple-health-actions-row">
+            <button type="button" class="apple-health-btn-cancel" onclick="closeAppleHealthModal(false)">No Permitir</button>
+            <button type="button" class="apple-health-btn-allow" onclick="closeAppleHealthModal(true)">Permitir Todos</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overlay de Escaneo Face ID Animado Real -->
+      <div class="apple-faceid-overlay" id="apple-faceid-overlay" style="display: none;">
+        <div class="faceid-scanner-box">
+          <div class="faceid-frame-corner top-left"></div>
+          <div class="faceid-frame-corner top-right"></div>
+          <div class="faceid-frame-corner bottom-left"></div>
+          <div class="faceid-frame-corner bottom-right"></div>
+          
+          <div class="faceid-icon-state" id="faceid-icon-state">
+            <span class="material-symbols-outlined faceid-icon-scanning">face_recognition</span>
+          </div>
+          <span class="faceid-status-text" id="faceid-status-text">Escaneando Face ID...</span>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           VIEW 1: HOMEPAGE (GATEWAY DE NODOS Y BOTÓN ROJO CENTRAL)
+           =================================================================== -->
+      <div class="app-view" id="view-home">
+
+        <!-- Background Star Particles Canvas INSIDE iPhone Frame (Only for Home View) -->
+        <canvas id="particles-canvas"></canvas>
+
+        <!-- Magical Flying Butterflies Layer -->
+        <div class="butterfly-container">
+          <div class="butterfly b-1">🦋</div>
+          <div class="butterfly b-2">🦋</div>
+          <div class="butterfly b-3">🦋</div>
+          <div class="butterfly b-4">🦋</div>
+          <div class="butterfly b-5">🦋</div>
+          <div class="butterfly b-6">🦋</div>
+        </div>
+
+        <!-- Top Header -->
+        <header class="iphone-header">
+          <div class="status-bar-row">
+            <span>9:41</span>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <span class="material-symbols-outlined" style="font-size: 1rem;">signal_cellular_4_bar</span>
+              <span class="material-symbols-outlined" style="font-size: 1rem;">wifi</span>
+              <span class="material-symbols-outlined" style="font-size: 1.1rem;">battery_full</span>
+            </div>
+          </div>
+
+          <div class="main-title-container">
+            <h1 class="app-main-title">Pochirocho</h1>
+            <div class="title-floral-garland">
+              <span class="garland-line"></span>
+              <span class="rose-icon">🌹</span>
+              <span class="rose-icon" style="font-size: 1.3rem;">✨</span>
+              <span class="rose-icon">🌹</span>
+              <span class="garland-line"></span>
+            </div>
+          </div>
+
+          <div class="widgets-row">
+            <div class="widget-pill streak-pill" title="Racha de Salud Activa">
+              <span class="icon">🔥</span>
+              <span id="home-streak-val">5 Días</span>
+            </div>
+            <div class="widget-pill points-pill" title="Pochipesos Acumulados">
+              <span class="icon">🪙</span>
+              <span id="home-points-val">350</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Sección de Tareas Diarias del Pochipeso -->
+        <section class="daily-tasks-hub-section" id="daily-tasks-hub-section">
+          <!-- Renderizado dinámico desde app.js -->
+        </section>
+
+        <!-- Stage with Nodes -->
+        <section class="hub-stage">
+          <svg class="svg-connectors" id="svg-connectors"></svg>
+
+          <!-- Nodo Tienda -->
+          <div class="periphery-node node-shop" id="node-shop" onclick="window.navigateToShop && window.navigateToShop()">
+            <div class="circular-node-card">
+              <span class="mini-badge" title="Gema de Tienda">✨</span>
+              <div class="node-icon-wrapper">
+                <span class="material-symbols-outlined">shopping_bag</span>
+              </div>
+              <span class="node-label-small">Recompensas</span>
+            </div>
+          </div>
+
+          <!-- Nodo Logros -->
+          <div class="periphery-node node-achievements" id="node-achievements" onclick="window.navigateToAchievements && window.navigateToAchievements()">
+            <div class="circular-node-card">
+              <span class="mini-badge" style="background: var(--cyan-accent); color: #02040a;"
+                title="Insignia de Logros">⭐</span>
+              <div class="node-icon-wrapper">
+                <span class="material-symbols-outlined">military_tech</span>
+              </div>
+              <span class="node-label-small">Mis Logros</span>
+            </div>
+          </div>
+
+          <!-- Botón Central Rojo del Tracker Menstrual -->
+          <div class="central-tracker-node" id="central-tracker-node" onclick="window.navigateToTracker && window.navigateToTracker()">
+            <div class="orb-wrapper">
+              <div class="orb-ring"></div>
+              <div class="orb-ring-inner"></div>
+              <div class="sun-orb">
+                <span class="material-symbols-outlined sun-orb-icon">water_drop</span>
+                <span class="sun-orb-text">Tracker</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nodo Amor (Antes Motivación) -->
+          <div class="periphery-node node-motivation" id="node-motivation" onclick="window.navigateToMotivation && window.navigateToMotivation()">
+            <div class="circular-node-card">
+              <span class="mini-badge" style="background: var(--rose-accent); color: #ffffff;"
+                title="Gema de Amor">💖</span>
+              <div class="node-icon-wrapper">
+                <span class="material-symbols-outlined">favorite</span>
+              </div>
+              <span class="node-label-small">Amor</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bottom Companion Footer -->
+        <footer class="iphone-footer">
+          <div class="companion-bubble-card">
+            <div class="avatar-preview-badge" id="home-avatar-badge">
+              <img src="assets/avatares/Amy/Normal_Amy.png" id="home-avatar-img" class="avatar-img-badge" alt="Avatar"/>
+            </div>
+            <div class="companion-text-wrapper">
+              <span class="companion-name" id="home-avatar-name">Manola la Erizo 🦔</span>
+              <span class="companion-quote" id="home-avatar-quote">"¡Hola! Toca cualquier nodo para explorar o el botón central para tu Tracker ✨"</span>
+            </div>
+          </div>
+        </footer>
+
+      </div>
+
+      <!-- ===================================================================
+           VIEW 2: TRACKER MENSTRUAL DASHBOARD
+           =================================================================== -->
+      <div class="app-view" id="view-tracker">
+
+        <!-- Tracker Menstrual Ambient Gradient Layer -->
+        <div class="tracker-ambient-liquid" id="tracker-ambient-liquid"></div>
+
+        <!-- Dynamic Falling PNG Theme Items Container -->
+        <div class="theme-falling-container" id="theme-falling-container"></div>
+
+        <!-- Continuous Rain Animation Layer for Blue Theme -->
+        <div class="rain-animated-layer" id="rain-animated-layer" style="display: none;"></div>
+
+        <!-- Top Nav Bar -->
+        <header class="tracker-top-bar">
+          <button class="tracker-nav-back-btn" id="btn-back-home">
+            <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_back_ios</span>
+            <span>Inicio App</span>
+          </button>
+          <span class="tracker-page-title">Salud Hormonal</span>
+          <button class="tracker-settings-btn" id="btn-open-settings" title="Ajustes y Configuración">
+            <span class="material-symbols-outlined" style="font-size: 1.2rem;">settings</span>
+          </button>
+        </header>
+
+        <!-- Prominent Action Button: "Registrar Detalles" -->
+        <div class="prominent-action-container">
+          <button class="btn-prominent-log" id="btn-open-symptom-sheet">
+            <span class="material-symbols-outlined" style="font-size: 1.3rem;">add_circle</span>
+            <span>Registrar Detalles</span>
+          </button>
+        </div>
+
+        <!-- Enhanced Dashboard Info Slab -->
+        <section class="enhanced-dashboard-slab" id="enhanced-dashboard-slab">
+          <div class="slab-header-row">
+            <div class="slab-phase-badge" id="slab-phase-badge">
+              <span class="material-symbols-outlined" style="font-size: 0.9rem;">auto_awesome</span>
+              <span id="slab-phase-name">Fase Ovulatoria</span>
+            </div>
+            <span style="font-size: 0.72rem; color: #cbd5e1;">Ciclo de 28 Días</span>
+          </div>
+
+          <div class="slab-main-row"
+            style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.2rem;">
+            <div>
+              <span
+                style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; display: block;">Estado
+                Actual</span>
+              <h2 class="slab-cycle-day">Día 14</h2>
+            </div>
+            <span
+              style="font-family: var(--font-heading); font-size: 0.8rem; color: var(--gold-accent); font-weight: 700;">Máxima
+              Energía ✨</span>
+          </div>
+
+          <div class="slab-metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">Riesgo Embarazo</span>
+              <span class="metric-value pregnancy-high">
+                <span class="material-symbols-outlined" style="font-size: 1rem;">warning</span>
+                Elevada
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Próxima Fase</span>
+              <span class="metric-value" style="color: var(--cyan-accent);">Fase Lútea (14d)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Avatar Section -->
+        <section class="tracker-avatar-section">
+          <div class="spike-avatar-wrapper" id="spike-avatar">
+            <img src="assets/avatares/Amy/Feliz_Amy.png" id="tracker-avatar-img" class="tracker-avatar-img" alt="Avatar"/>
+          </div>
+          <div class="avatar-speech-bubble">
+            <h5 class="speech-title" id="tracker-avatar-title">Manola la Erizo 🦔</h5>
+            <p class="speech-text" id="tracker-avatar-text">
+              "¡Hoy tu energía está al máximo! Ideal para ejercicios suaves o estiramientos pélvicos. Bebe 2L de agua 💧"
+            </p>
+          </div>
+        </section>
+
+        <!-- Spotify Psychoacoustic Recommendation Section (Ubicado bajo el comentario del avatar) -->
+        <section class="spotify-recommendation-section" id="spotify-dashboard-section"></section>
+
+        <!-- Dynamic Content Section for Semicircle Tabs -->
+        <div id="tracker-subview-content" style="display: none;"></div>
+
+        <!-- Physical Sanctuary ACCENTUATED SEMICIRCULAR NAVIGATION WHEEL -->
+        <nav class="wheel-semicircle-container">
+          <div class="semicircle-physical-bar">
+
+            <div class="wheel-nav-item" data-tab="calendar">
+              <span class="material-symbols-outlined icon">calendar_month</span>
+              <span class="label">Calendario</span>
+            </div>
+
+            <div class="wheel-nav-item" data-tab="relief">
+              <span class="material-symbols-outlined icon">self_improvement</span>
+              <span class="label">Alivio</span>
+            </div>
+
+            <div class="wheel-nav-item home-tracker-hub-btn active" data-tab="dashboard">
+              <div class="hub-enclosed-circle" title="Pantalla Principal del Tracker">
+                <span class="material-symbols-outlined" style="font-size: 1.6rem;">home</span>
+              </div>
+              <span class="label">Principal</span>
+            </div>
+
+            <div class="wheel-nav-item" data-tab="trends">
+              <span class="material-symbols-outlined icon">query_stats</span>
+              <span class="label">Análisis</span>
+            </div>
+
+            <div class="wheel-nav-item" data-tab="ai">
+              <span class="material-symbols-outlined icon">smart_toy</span>
+              <span class="label">IA Salud</span>
+            </div>
+
+          </div>
+        </nav>
+
+      </div>
+
+      <!-- ===================================================================
+           VIEW 3: NODO 2 - TIENDA VIRTUAL DE RECOMPENSAS (POCHIROCHO STORE & CYBER-STREET MARKET)
+           =================================================================== -->
+      <div class="app-view" id="view-shop">
+        <div class="cyber-store-ambient-bg"></div>
+        <header class="tracker-top-bar" style="margin-top: 1.4rem; z-index: 35;">
+          <button class="tracker-nav-back-btn" onclick="navigateToHomeFromNode()">
+            <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_back_ios</span>
+            <span>Inicio App</span>
+          </button>
+          <span class="tracker-page-title">Pochirocho Store 🛍️</span>
+          <div class="widget-pill points-pill" style="margin:0; font-size:0.75rem;">
+            <span class="icon">🪙</span>
+            <span id="shop-coins-counter">350</span>
+          </div>
+        </header>
+        <div class="node-view-container" id="shop-view-content"></div>
+      </div>
+
+      <!-- ===================================================================
+           VIEW 4: NODO 3 - LOGROS & MEDALLAS (COSMIC GRID HUB & ETHEREAL NEBULA)
+           =================================================================== -->
+      <div class="app-view" id="view-achievements">
+        <div class="ethereal-nebula-ambient-bg"></div>
+        <header class="tracker-top-bar" style="margin-top: 1.4rem; z-index: 35;">
+          <button class="tracker-nav-back-btn" onclick="navigateToHomeFromNode()">
+            <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_back_ios</span>
+            <span>Inicio App</span>
+          </button>
+          <span class="tracker-page-title">Mis Logros 🏆</span>
+          <div class="widget-pill streak-pill" style="margin:0; font-size:0.75rem;">
+            <span class="icon">🔥</span>
+            <span id="achievements-streak-counter">5 Días</span>
+          </div>
+        </header>
+        <div class="node-view-container" id="achievements-view-content"></div>
+      </div>
+
+      <!-- ===================================================================
+           VIEW 5: NODO 4 - AMOR (AMOR POLLOCHIROCHO - CARTAS Y NOTAS DE AMOR)
+           =================================================================== -->
+      <div class="app-view" id="view-motivation">
+        <div class="motivation-sunset-ambient-bg"></div>
+        <div class="floating-petals-layer">
+          <span class="petal p-1">🌸</span>
+          <span class="petal p-2">🌺</span>
+          <span class="petal p-3">✨</span>
+          <span class="petal p-4">🌸</span>
+        </div>
+        <header class="motivation-header-stacked">
+          <div class="motivation-header-top-row">
+            <button class="tracker-nav-back-btn" onclick="navigateToHomeFromNode()">
+              <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_back_ios</span>
+              <span>Inicio App</span>
+            </button>
+            <div class="motivation-header-pill">
+              <span>💌 Notas del Corazón</span>
+            </div>
+          </div>
+          <div class="motivation-title-center-row">
+            <h1 class="motivation-title-romantic">Amor Pollochirocho</h1>
+          </div>
+        </header>
+        <div class="node-view-container" id="motivation-view-content"></div>
+        <!-- Micro-Asset Secreto del Marcianito Oculto en Amor -->
+        <img src="assets/marcianito_secret_asset.png" class="secret-marcianito-egg" onclick="triggerSecretMarcianitoEgg()" title="✨" alt="✨" />
+      </div>
+
+      <!-- Modals Overlay System -->
+      <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-glass-container">
+          <div class="modal-header">
+            <div class="modal-title-group">
+              <span class="material-symbols-outlined modal-title-icon" id="modal-title-icon">auto_awesome</span>
+              <h3 class="modal-title" id="modal-title">Módulo</h3>
+            </div>
+            <button class="modal-close-btn" id="modal-close-btn" aria-label="Cerrar">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="modal-body" id="modal-body">
+            <!-- Dynamic Content Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/particles.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')'))
+          .catch(err => console.warn('PWA Service Worker registro fallido:', err));
+      });
+    }
+  </script>
+</body>
+
+</html>

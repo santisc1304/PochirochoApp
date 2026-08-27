@@ -5216,30 +5216,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     enhancedSlab.classList.remove('animate-fall-delayed');
     if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
-    void enhancedSlab.offsetWidth;
-    if (avatarSection) void avatarSection.offsetWidth;
 
-    enhancedSlab.classList.add('animate-fall-delayed');
-    if (avatarSection) avatarSection.classList.add('animate-full-fluid-entrance');
+    requestAnimationFrame(() => {
+      enhancedSlab.classList.add('animate-fall-delayed');
+      if (avatarSection) avatarSection.classList.add('animate-full-fluid-entrance');
+    });
 
-    // PASO 2: Cae el slab - el avatar se asusta (Asustado/Asustada)
+    // PASO 2: Cae el slab - el avatar se asusta (Asustado/Asustada) a los 380ms
     setTimeout(() => {
       updateAvatarDisplay('Asustado');
       if (avatarSpeechText) avatarSpeechText.textContent = pet.quotes.trackerScared;
-    }, 1050);
+    }, 380);
 
-    // PASO 3: El avatar esquiva y suspira aliviado (Aliviado/Aliviada)
+    // PASO 3: El avatar esquiva y suspira aliviado (Aliviado/Aliviada) a los 880ms
     setTimeout(() => {
       updateAvatarDisplay('Aliviado');
       if (avatarSpeechText) avatarSpeechText.textContent = pet.quotes.trackerRelieved;
-    }, 1850);
+    }, 880);
 
-    // PASO 4: Se asienta en el estado de su fase activa del ciclo (Menstrual/Folicular/Ovulatoria/Lutea) + Spotify
+    // PASO 4: Se asienta en el estado de su fase activa del ciclo + Spotify a los 1450ms
     setTimeout(() => {
       updateAvatarDisplay(null);
       if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
       renderSpotifyDashboardCard(true);
-    }, 2600);
+    }, 1450);
   }
 
   function navigateToHome() {

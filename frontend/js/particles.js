@@ -9,7 +9,8 @@
   const ctx = canvas.getContext('2d');
   let width, height;
   let particles = [];
-  const PARTICLE_COUNT = 120;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const PARTICLE_COUNT = isMobile ? 30 : 60;
   
   let mouse = { x: -1000, y: -1000 };
 
@@ -78,10 +79,7 @@
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${this.color}, ${Math.max(0, Math.min(1, this.opacity))})`;
-      ctx.shadowColor = `rgba(${this.color}, 0.8)`;
-      ctx.shadowBlur = this.radius * 3;
       ctx.fill();
-      ctx.shadowBlur = 0; // reset
     }
   }
 

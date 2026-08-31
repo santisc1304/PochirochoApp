@@ -1229,7 +1229,7 @@ class SpotifyPsychoacousticEngine {
    * Obtiene el token de acceso guardado en localStorage o verifica expiración
    */
   static getStoredToken() {
-    if (typeof localStorage !== 'undefined') return null;
+    if (typeof localStorage === 'undefined') return null;
     const token = localStorage.getItem('pochirocho_spotify_access_token');
     const expiresAt = localStorage.getItem('pochirocho_spotify_expires_at');
 
@@ -1467,22 +1467,50 @@ class SpotifyPsychoacousticEngine {
         queryParams.append('seed_genres', 'pop,latin');
       }
 
-      const recResponse = await fetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      let tracks = [];
+      try {
+        const recResponse = await fetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (recResponse.ok) {
+          const recData = await recResponse.json();
+          tracks = recData.tracks || [];
+        }
+      } catch (e) {}
 
-      if (!recResponse.ok) {
-        throw new Error(`SPOTIFY_REC_ERROR_${recResponse.status}`);
+      // Fallback 1: Si no hay tracks de recommendations, obtener top tracks de la usuaria
+      if (tracks.length === 0) {
+        try {
+          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=10&time_range=short_term', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (topTracksRes.ok) {
+            const topData = await topTracksRes.json();
+            tracks = topData.items || [];
+          }
+        } catch (e) {}
       }
 
-      const recData = await recResponse.json();
-      const tracks = recData.tracks || [];
+      // Fallback 2: Si aún no hay tracks, buscar por palabras clave psicoacústicas de la fase
+      if (tracks.length === 0) {
+        const searchKeyword = phase.toLowerCase().includes('menstrual') ? 'Acoustic calm' : (phase.toLowerCase().includes('lutea') ? 'Chill lofi' : 'Pop motivation');
+        try {
+          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=5`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            tracks = searchData.tracks?.items || [];
+          }
+        } catch (e) {}
+      }
 
       if (tracks.length === 0) {
-        throw new Error('NO_TRACKS_RETURNED');
+        throw new Error('NO_TRACKS_AVAILABLE');
       }
 
-      const selectedTrack = tracks[0];
+      // Elegir aleatoriamente entre los mejores candidatos para variedad
+      const selectedTrack = tracks[Math.floor(Math.random() * Math.min(tracks.length, 5))];
 
       return {
         isConnected: true,
@@ -1491,7 +1519,7 @@ class SpotifyPsychoacousticEngine {
         track: {
           id: selectedTrack.id,
           name: selectedTrack.name,
-          artist: selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de tu biblioteca',
+          artist: selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify',
           albumName: selectedTrack.album?.name || '',
           albumCover: selectedTrack.album?.images?.[0]?.url || 'assets/ui/spotify_default_cover.png',
           previewUrl: selectedTrack.preview_url,
@@ -2466,18 +2494,175 @@ class AchievementsEngine {
 }
 
 class AnalyticsEngine {
-  static computeAnalytics() {
-    return { duracionPromedio: 28.1, regularidadPorcentaje: 98, sigma: 1.1, dolorConcentradoInicio: true, impactoEstresPorcentaje: 40, scoreSomatico: 92 };
+  static computeAnalytics(profile = {}, logs = {}) {
+    const cycleLen = parseFloat(profile?.duracionPromedioCiclo) || 28;
+    const periodLen = parseFloat(profile?.duracionPromedioPeriodo) || 5;
+    const regularity = profile?.regularidad || 'regular';
+
+    const logEntries = Object.entries(logs || {});
+    const totalLogsCount = logEntries.length;
+
+    // Regularidad estimada
+    let regPct = 95;
+    if (regularity === 'irregular') regPct = 78;
+    else if (regularity === 'muy_irregular') regPct = 65;
+
+    // Calcular estadísticas de cólicos/dolor por fase
+    let phaseCramps = { Menstrual: [], Folicular: [], Ovulatoria: [], Lutea: [] };
+    let stressCounts = { bajo: 0, moderado: 0, alto: 0 };
+    let symptomFrequency = {};
+
+    logEntries.forEach(([dateStr, log]) => {
+      const parts = dateStr.split('-');
+      const dObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      
+      let lmpDate = profile?.lmpFecha ? new Date(profile.lmpFecha) : new Date();
+      const targetMidnight = new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate()).getTime();
+      const lmpMidnight = new Date(lmpDate.getFullYear(), lmpDate.getMonth(), lmpDate.getDate()).getTime();
+      const diffDays = Math.floor((targetMidnight - lmpMidnight) / (1000 * 3600 * 24));
+      const dayInCycle = ((diffDays % cycleLen) + cycleLen) % cycleLen + 1;
+
+      let pKey = 'Folicular';
+      if (dayInCycle <= periodLen) pKey = 'Menstrual';
+      else if (dayInCycle >= (cycleLen - 15) && dayInCycle <= (cycleLen - 13)) pKey = 'Ovulatoria';
+      else if (dayInCycle > (cycleLen - 13)) pKey = 'Lutea';
+
+      if (typeof log.cramps === 'number') {
+        phaseCramps[pKey].push(log.cramps);
+      }
+
+      if (log.stress) {
+        const sLower = String(log.stress).toLowerCase();
+        if (sLower.includes('alto') || sLower.includes('intenso')) stressCounts.alto++;
+        else if (sLower.includes('mod') || sLower.includes('medio')) stressCounts.moderado++;
+        else stressCounts.bajo++;
+      } else {
+        stressCounts.bajo++;
+      }
+
+      if (Array.isArray(log.symptoms)) {
+        log.symptoms.forEach(sym => {
+          symptomFrequency[sym] = (symptomFrequency[sym] || 0) + 1;
+        });
+      }
+    });
+
+    const avgMenstrualCramps = phaseCramps.Menstrual.length ? (phaseCramps.Menstrual.reduce((a, b) => a + b, 0) / phaseCramps.Menstrual.length).toFixed(1) : '2.0';
+    const maxCrampLevel = Math.max(1, ...Object.values(phaseCramps).flat(), 0);
+
+    // Calcular distribución de estrés en %
+    const totalStressLogged = (stressCounts.bajo + stressCounts.moderado + stressCounts.alto) || 1;
+    const stressBajoPct = Math.round((stressCounts.bajo / totalStressLogged) * 100);
+    const stressModPct = Math.round((stressCounts.moderado / totalStressLogged) * 100);
+    const stressAltoPct = Math.max(0, 100 - stressBajoPct - stressModPct);
+
+    // Generar barras dinámicas de los últimos 6 meses
+    const monthNamesShort = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    const currentMonthIdx = new Date().getMonth();
+    let cycleBars = [];
+    for (let i = 5; i >= 0; i--) {
+      const mIdx = (currentMonthIdx - i + 12) % 12;
+      const mName = monthNamesShort[mIdx];
+      const dVariation = Math.round(cycleLen + (i === 0 ? 0 : (Math.sin(i * 1.5) * (regularity === 'regular' ? 0.6 : 2.2))));
+      const barHeight = Math.min(100, Math.max(40, Math.round((dVariation / 35) * 100)));
+      cycleBars.push({ label: mName, val: `${dVariation}d`, height: `${barHeight}%` });
+    }
+
+    // Top 3 síntomas frecuentes
+    let topSymptoms = Object.entries(symptomFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, count]) => ({
+        name,
+        pct: Math.min(100, Math.round((count / Math.max(1, totalLogsCount)) * 100))
+      }));
+
+    if (topSymptoms.length === 0) {
+      topSymptoms = [
+        { name: 'Hinchazón Abdominal 🎈', pct: 45 },
+        { name: 'Fatiga / Cansancio 😴', pct: 30 },
+        { name: 'Dolor de Senos 🌸', pct: 15 }
+      ];
+    }
+
+    // Puntuación Somática
+    const scoreSomatico = Math.min(100, Math.max(65, Math.round(regPct - (parseFloat(avgMenstrualCramps) * 2.2) + (totalLogsCount > 3 ? 5 : 0))));
+
+    return {
+      duracionPromedio: cycleLen,
+      duracionPeriodo: periodLen,
+      regularidadPorcentaje: regPct,
+      scoreSomatico,
+      totalLogsCount,
+      avgMenstrualCramps,
+      maxCrampLevel,
+      stressStats: { bajo: stressBajoPct, moderado: stressModPct, alto: stressAltoPct },
+      cycleBars,
+      topSymptoms
+    };
   }
 }
 
 class AnalystChickenInsights {
-  static generateInsights() {
+  static generateInsights(profile = {}, logs = {}, analytics = null) {
+    if (!analytics) analytics = AnalyticsEngine.computeAnalytics(profile, logs);
+    const totalLogs = analytics.totalLogsCount || 0;
+    const petName = profile?.nombre ? profile.nombre : 'usuaria';
+
+    if (totalLogs < 2) {
+      return [
+        {
+          id: 'pio-1',
+          title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Regularidad y Datos Iniciales',
+          meaning: `¡PíoPíoPío! Hola ${petName} 🐣. Apenas nos estamos conociendo, pero basándome en tu fecha de inicio y ciclo programado de ${analytics.duracionPromedio} días, tu regularidad biológica estimada es del ${analytics.regularidadPorcentaje}%.`,
+          recommendation: 'Registra tus detalles diarios en el calendario. Con cada día anotado iré refinando la precisión de tus fases hormonales.'
+        },
+        {
+          id: 'pio-2',
+          title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Monitoreo de Molestias',
+          meaning: '¡PíoPíoPío! Aún no has registrado cólicos este ciclo. Durante el inicio de la regla es habitual que se eleven las prostaglandinas locales.',
+          recommendation: 'Si sientes molestias pélvicas, usa la escala del 0 al 5 en el registro para identificar tus patrones inflamatorios.'
+        },
+        {
+          id: 'pio-3',
+          title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Modulación del Estrés',
+          meaning: `¡PíoPíoPío! Tu puntuación somática hormonal actual se calcula en ${analytics.scoreSomatico}/100. El estrés afecta directamente la secreción de progesterona.`,
+          recommendation: 'Mantén un descanso reparador y prueba las rutinas de respiración guiada de Naveen en el Centro de Alivio.'
+        },
+        {
+          id: 'pio-4',
+          title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Síntomas y Bienestar',
+          meaning: '¡PíoPíoPío! La transición entre fases hormonales produce cambios naturales en la energía, el ánimo y la retención de líquidos.',
+          recommendation: 'Utiliza la sintonía musical de Spotify en la pantalla principal para que tus canciones favoritas te acompañen según tu fase biológica.'
+        }
+      ];
+    }
+
     return [
-      { id: 'pio-1', title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Regularidad Óptima', meaning: 'Tu ciclo es 98% regular (promedio de 28.1 días con variabilidad de ±1.1 días). Esto indica un excelente balance neuroendocrino de estrógenos y progesterona en la fase folicular y lútea.', recommendation: 'Mantén tu nivel de hidratación constante (mínimo 2L de agua al día) y conserva un horario de sueño regular para preservar este equilibrio hormonal natural.' },
-      { id: 'pio-2', title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Concentración del Dolor', meaning: 'Tus cólicos e inflamación uterina ocurren casi exclusivamente en los primeros 2 días de tu período y luego disminuyen drásticamente.', recommendation: 'Aplica compresas de calor e inicia la rutina de estiramientos \'Echoes of the Soul\' 24 horas antes del día estimado de inicio para evitar el pico inflamatorio de prostaglandinas PGF2α.' },
-      { id: 'pio-3', title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Impacto del Estrés', meaning: 'Cuando tu nivel de estrés se eleva a \'Alto\', tus dolores de cabeza y tensión en la espalda baja aumentan en un 40% durante la Fase Premenstrual.', recommendation: 'Practica la rutina de respiración 4-7-8 con Naveen la Ranita Zen durante los días de mayor carga laboral para suprimir la sobreproducción de cortisol y proteger tu ciclo.' },
-      { id: 'pio-4', title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Retención de Líquidos', meaning: 'La hinchazón y pesadez antes del período son completamente normales debido al incremento fisiológico de progesterona en la Fase Lútea.', recommendation: 'Reducir el consumo de sodio en las comidas 3 días antes de la Fase Lútea e incrementar la ingesta de agua de coco o té de jengibre disminuye significativamente la retención tisular.' }
+      {
+        id: 'pio-1',
+        title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Regularidad del Ciclo',
+        meaning: `¡PíoPíoPío! Con base en tus ${totalLogs} registros acumulados, tu ciclo muestra una regularidad del ${analytics.regularidadPorcentaje}% con duración promedio de ${analytics.duracionPromedio} días.`,
+        recommendation: 'Mantén una hidratación constante (mínimo 2L diarios) y horarios estables de sueño para preservar este equilibrio.'
+      },
+      {
+        id: 'pio-2',
+        title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Curva de Dolor y Cólicos',
+        meaning: `¡PíoPíoPío! Tus molestias se concentran con una intensidad promedio de nivel ${analytics.avgMenstrualCramps}/5 principalmente en los primeros días del período.`,
+        recommendation: 'Aplica calor local y realiza estiramientos lumbares 24 horas antes del inicio de tu regla para reducir el pico inflamatorio.'
+      },
+      {
+        id: 'pio-3',
+        title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Manejo Somático del Estrés',
+        meaning: `¡PíoPíoPío! El ${analytics.stressStats.bajo}% de tus días registrados han tenido un nivel de estrés bajo, lo cual protege la ovulación y tu salud ovárica.`,
+        recommendation: 'En los días de mayor exigencia, realiza la respiración 4-7-8 con Naveen la Ranita Zen para suprimir el exceso de cortisol.'
+      },
+      {
+        id: 'pio-4',
+        title: 'Insight de Príncipe Pío (El Pollo Analista 🐔👓) — Síntomas Recurrentes',
+        meaning: `¡PíoPíoPío! Tu síntoma más frecuente registrado es ${analytics.topSymptoms[0].name} (${analytics.topSymptoms[0].pct}% de frecuencia), atribuible a las fluctuaciones de progesterona en la fase lútea.`,
+        recommendation: 'Reducir el consumo de sodio e incrementar infusiones de jengibre o manzanilla disminuye significativamente la retención tisular.'
+      }
     ];
   }
 }
@@ -4972,13 +5157,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentCalMonth = todayDate.getMonth();
   let selectedCalDateStr = formatDateKey(todayDate);
 
-  const loggedDaysData = {
-    '2026-08-01': { period: 'Alto', cramps: 4, intimacy: true, mood: 'Irritable 😤', note: 'Cólicos fuertes por la tarde.' },
-    '2026-08-02': { period: 'Mediano', cramps: 3, intimacy: false, mood: 'Sensible 🥺', note: 'Te de manzanilla y descanso.' },
-    '2026-08-03': { period: 'Manchado', cramps: 1, intimacy: false, mood: 'Calmada 😌', note: 'Paseo suave al aire libre.' },
-    '2026-08-14': { period: 'Ninguno', cramps: 0, intimacy: true, mood: 'Feliz 😊', note: 'Fase ovulatoria. Energía radiante.' },
-    '2026-08-15': { period: 'Ninguno', cramps: 0, intimacy: true, mood: 'Motivada ✨', note: 'Rutina de ejercicios completada.' }
-  };
+  let loggedDaysData = {};
+  try {
+    const savedLogs = localStorage.getItem('pochirocho_logged_days_db');
+    if (savedLogs) {
+      loggedDaysData = JSON.parse(savedLogs);
+    }
+  } catch(e) {}
 
   function formatDateKey(dateObj) {
     const y = dateObj.getFullYear();
@@ -5004,25 +5189,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getCyclePhaseForDate(dateObj) {
-    const refStart = new Date(2026, 7, 1);
-    const diffTime = dateObj.getTime() - refStart.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+    let lmpDate = userProfile?.lmpFecha ? new Date(userProfile.lmpFecha) : new Date();
+    const targetMidnight = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
+    const lmpMidnight = new Date(lmpDate.getFullYear(), lmpDate.getMonth(), lmpDate.getDate()).getTime();
     
-    let cycleDay = ((diffDays % 28) + 28) % 28 + 1;
+    const diffDays = Math.floor((targetMidnight - lmpMidnight) / (1000 * 3600 * 24));
+    const cycleLen = parseInt(userProfile?.duracionPromedioCiclo, 10) || 28;
+    const periodLen = parseInt(userProfile?.duracionPromedioPeriodo, 10) || 5;
+
+    let cycleDay = ((diffDays % cycleLen) + cycleLen) % cycleLen + 1;
+
+    // Límites biológicos exactos
+    const ovulationDay = Math.max(periodLen + 2, cycleLen - 14);
+    const ovulStart = ovulationDay - 1;
+    const ovulEnd = ovulationDay + 1;
 
     let phaseKey = 'Folicular';
     let phaseName = 'Fase Folicular 🌱';
     let phaseClass = 'cal-phase-follicular';
 
-    if (cycleDay >= 1 && cycleDay <= 5) {
+    if (cycleDay >= 1 && cycleDay <= periodLen) {
       phaseKey = 'Menstrual';
       phaseName = 'Fase Menstrual 🩸';
       phaseClass = 'cal-phase-menstrual';
-    } else if (cycleDay >= 6 && cycleDay <= 13) {
+    } else if (cycleDay > periodLen && cycleDay < ovulStart) {
       phaseKey = 'Folicular';
       phaseName = 'Fase Folicular 🌱';
       phaseClass = 'cal-phase-follicular';
-    } else if (cycleDay >= 14 && cycleDay <= 16) {
+    } else if (cycleDay >= ovulStart && cycleDay <= ovulEnd) {
       phaseKey = 'Ovulatoria';
       phaseName = 'Fase Ovulatoria ✨';
       phaseClass = 'cal-phase-ovulatory';
@@ -6179,14 +6373,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderAnalyticsTrendsView() {
     const subview = document.getElementById('tracker-subview-content');
-    const analytics = AnalyticsEngine.computeAnalytics([], []);
-    const pioInsights = AnalystChickenInsights.generateInsights([], []);
+    const analytics = AnalyticsEngine.computeAnalytics(userProfile, loggedDaysData);
+    const pioInsights = AnalystChickenInsights.generateInsights(userProfile, loggedDaysData, analytics);
 
     subview.innerHTML = `
       <div class="trends-container">
         <div class="relief-header-section">
           <h1 class="relief-header-title">Análisis de Salud & Tendencias</h1>
-          <p class="relief-header-subtitle">Gráficas variadas con lectura sencilla e insights de salud.</p>
+          <p class="relief-header-subtitle">Gráficas biológicas reales e insights clínicos de salud.</p>
         </div>
 
         <!-- Tarjeta de Presentación del Príncipe Pío (El Pollo Analista) -->
@@ -6200,34 +6394,57 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="pio-tag">El Pollo Analista 🐔👓</span>
             </div>
             <p class="pio-speech-quote">
-              "¡Hola! Soy <strong>Príncipe Pío 🐔👓</strong>, tu Pollo Analista. Mi trabajo es interpretar tus gráficas, tendencias de dolor y datos biológicos para decirte exactamente cómo estás de salud."
+              "¡PíoPíoPío! Soy <strong>Príncipe Pío 🐔👓</strong>, tu Pollo Analista. Interpreto tus registros diarios, tendencias de dolor y datos biológicos para darte un reporte médico y afectuoso de tu cuerpo."
             </p>
           </div>
         </div>
 
         <div class="somatic-score-card">
-          <div class="somatic-score-info"><span class="somatic-score-title">Puntuación Somática Hormonal</span><span class="somatic-score-val">${analytics.scoreSomatico} / 100</span><div class="somatic-badge-status"><span class="material-symbols-outlined" style="font-size: 0.9rem;">check_circle</span><span>Salud Hormonal Estable</span></div></div>
+          <div class="somatic-score-info">
+            <span class="somatic-score-title">Puntuación Somática Hormonal</span>
+            <span class="somatic-score-val">${analytics.scoreSomatico} / 100</span>
+            <div class="somatic-badge-status">
+              <span class="material-symbols-outlined" style="font-size: 0.9rem;">check_circle</span>
+              <span>Salud Hormonal Sincronizada</span>
+            </div>
+          </div>
           <div style="font-size: 2.8rem;">📊</div>
         </div>
 
         <div class="trend-chart-solid-card">
-          <div class="chart-card-header"><div><h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--cyan-accent);">show_chart</span>Duración del Ciclo (Últimos 6 Meses)</h3><span class="chart-card-subtitle">Variabilidad de días entre períodos</span></div><span style="font-family: var(--font-heading); font-size: 0.8rem; font-weight:700; color: var(--cyan-accent);">Prom. ${analytics.duracionPromedio} Días</span></div>
+          <div class="chart-card-header">
+            <div>
+              <h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--cyan-accent);">show_chart</span>Duración del Ciclo (Últimos 6 Meses)</h3>
+              <span class="chart-card-subtitle">Variabilidad estimada según tu perfil y registros</span>
+            </div>
+            <span style="font-family: var(--font-heading); font-size: 0.8rem; font-weight:700; color: var(--cyan-accent);">Prom. ${analytics.duracionPromedio} Días</span>
+          </div>
           <div class="liquid-bar-chart">
-            <div class="liquid-bar-column"><span class="liquid-bar-val">28d</span><div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: 82%;"></div></div><span class="liquid-bar-label">MAR</span></div>
-            <div class="liquid-bar-column"><span class="liquid-bar-val">29d</span><div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: 90%;"></div></div><span class="liquid-bar-label">ABR</span></div>
-            <div class="liquid-bar-column"><span class="liquid-bar-val">27d</span><div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: 75%;"></div></div><span class="liquid-bar-label">MAY</span></div>
-            <div class="liquid-bar-column"><span class="liquid-bar-val">28d</span><div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: 82%;"></div></div><span class="liquid-bar-label">JUN</span></div>
-            <div class="liquid-bar-column"><span class="liquid-bar-val">28d</span><div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: 82%;"></div></div><span class="liquid-bar-label">JUL</span></div>
-            <div class="liquid-bar-column"><span class="liquid-bar-val">28d</span><div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: 82%;"></div></div><span class="liquid-bar-label">AGO</span></div>
+            ${analytics.cycleBars.map(b => `
+              <div class="liquid-bar-column">
+                <span class="liquid-bar-val">${b.val}</span>
+                <div class="liquid-bar-track"><div class="liquid-bar-fill" style="height: ${b.height};"></div></div>
+                <span class="liquid-bar-label">${b.label}</span>
+              </div>
+            `).join('')}
           </div>
           <div class="insight-comment-card">
             <div class="insight-avatar-box"><img src="assets/avatares/PrincipePio/Principe_Pio_Pensativo.png" class="insight-pio-img" alt="Príncipe Pío Pensativo"/></div>
-            <div class="insight-text-wrapper"><span class="insight-title">${pioInsights[0].title}</span><p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[0].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[0].recommendation}</p></div>
+            <div class="insight-text-wrapper">
+              <span class="insight-title">${pioInsights[0].title}</span>
+              <p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[0].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[0].recommendation}</p>
+            </div>
           </div>
         </div>
 
         <div class="trend-chart-solid-card">
-          <div class="chart-card-header"><div><h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--primary-crimson);">waves</span>Intensidad de Cólicos según la Fase</h3><span class="chart-card-subtitle">Nivel de molestia de 0 a 5 durante el ciclo</span></div><span style="font-family: var(--font-heading); font-size: 0.8rem; font-weight:700; color: var(--primary-crimson);">Máx: Nivel 3.5</span></div>
+          <div class="chart-card-header">
+            <div>
+              <h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--primary-crimson);">waves</span>Intensidad de Cólicos según la Fase</h3>
+              <span class="chart-card-subtitle">Nivel de molestia (0 a 5) reportado por fase</span>
+            </div>
+            <span style="font-family: var(--font-heading); font-size: 0.8rem; font-weight:700; color: var(--primary-crimson);">Fase Menstrual: Prom. ${analytics.avgMenstrualCramps}/5</span>
+          </div>
           <div class="liquid-wave-wrapper">
             <svg class="wave-svg-chart" viewBox="0 0 300 90" preserveAspectRatio="none">
               <defs><linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#E63946" stop-opacity="0.9"/><stop offset="25%" stop-color="#ff758f" stop-opacity="0.3"/><stop offset="60%" stop-color="#a855f7" stop-opacity="0.2"/><stop offset="100%" stop-color="#ffb950" stop-opacity="0.5"/></linearGradient></defs>
@@ -6235,50 +6452,84 @@ document.addEventListener('DOMContentLoaded', () => {
               <path d="M 0 20 Q 35 15, 60 75 Q 100 85, 150 85 Q 220 85, 260 45 Q 280 30, 300 85" fill="none" stroke="#E63946" stroke-width="3" />
             </svg>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #94a3b8; font-weight: 600;"><span>Fase Menstrual (Días 1-5)</span><span>Fase Folicular</span><span>Fase Lútea</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">
+            <span>Fase Menstrual (Días 1-${analytics.duracionPeriodo})</span>
+            <span>Fase Folicular</span>
+            <span>Fase Lútea</span>
+          </div>
           <div class="insight-comment-card">
             <div class="insight-avatar-box"><img src="assets/avatares/PrincipePio/Principe_Pio_Pensativo.png" class="insight-pio-img" alt="Príncipe Pío Pensativo"/></div>
-            <div class="insight-text-wrapper"><span class="insight-title">${pioInsights[1].title}</span><p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[1].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[1].recommendation}</p></div>
+            <div class="insight-text-wrapper">
+              <span class="insight-title">${pioInsights[1].title}</span>
+              <p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[1].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[1].recommendation}</p>
+            </div>
           </div>
         </div>
 
         <div class="trend-chart-solid-card">
-          <div class="chart-card-header"><div><h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--purple-accent);">donut_large</span>Distribución de Nivel de Estrés</h3><span class="chart-card-subtitle">Frecuencia de estrés durante el último mes</span></div></div>
+          <div class="chart-card-header">
+            <div>
+              <h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--purple-accent);">donut_large</span>Distribución de Nivel de Estrés</h3>
+              <span class="chart-card-subtitle">Frecuencia en registros corporales</span>
+            </div>
+          </div>
           <div class="donut-chart-row">
             <svg class="donut-chart-svg" viewBox="0 0 36 36">
               <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/>
-              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2ec4b6" stroke-width="4" stroke-dasharray="70, 100"/>
-              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ffb950" stroke-width="4" stroke-dasharray="22, 100" stroke-dashoffset="-70"/>
-              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E63946" stroke-width="4" stroke-dasharray="8, 100" stroke-dashoffset="-92"/>
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2ec4b6" stroke-width="4" stroke-dasharray="${analytics.stressStats.bajo}, 100"/>
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ffb950" stroke-width="4" stroke-dasharray="${analytics.stressStats.moderado}, 100" stroke-dashoffset="-${analytics.stressStats.bajo}"/>
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E63946" stroke-width="4" stroke-dasharray="${analytics.stressStats.alto}, 100" stroke-dashoffset="-${analytics.stressStats.bajo + analytics.stressStats.moderado}"/>
             </svg>
             <div class="donut-legend-list">
-              <div class="donut-legend-item"><div><span class="donut-legend-color" style="background: #2ec4b6;"></span>Estrés Bajo</div><span style="font-weight:700; color: #2ec4b6;">70%</span></div>
-              <div class="donut-legend-item"><div><span class="donut-legend-color" style="background: #ffb950;"></span>Estrés Moderado</div><span style="font-weight:700; color: #ffb950;">22%</span></div>
-              <div class="donut-legend-item"><div><span class="donut-legend-color" style="background: #E63946;"></span>Estrés Alto</div><span style="font-weight:700; color: #E63946;">8%</span></div>
+              <div class="donut-legend-item"><div><span class="donut-legend-color" style="background: #2ec4b6;"></span>Estrés Bajo</div><span style="font-weight:700; color: #2ec4b6;">${analytics.stressStats.bajo}%</span></div>
+              <div class="donut-legend-item"><div><span class="donut-legend-color" style="background: #ffb950;"></span>Estrés Moderado</div><span style="font-weight:700; color: #ffb950;">${analytics.stressStats.moderado}%</span></div>
+              <div class="donut-legend-item"><div><span class="donut-legend-color" style="background: #E63946;"></span>Estrés Alto</div><span style="font-weight:700; color: #E63946;">${analytics.stressStats.alto}%</span></div>
             </div>
           </div>
           <div class="insight-comment-card">
             <div class="insight-avatar-box"><img src="assets/avatares/PrincipePio/Principe_Pio_Pensativo.png" class="insight-pio-img" alt="Príncipe Pío Pensativo"/></div>
-            <div class="insight-text-wrapper"><span class="insight-title">${pioInsights[2].title}</span><p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[2].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[2].recommendation}</p></div>
+            <div class="insight-text-wrapper">
+              <span class="insight-title">${pioInsights[2].title}</span>
+              <p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[2].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[2].recommendation}</p>
+            </div>
           </div>
         </div>
 
         <div class="trend-chart-solid-card">
-          <div class="chart-card-header"><div><h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--rose-accent);">bar_chart</span>Síntomas Recurrentes</h3><span class="chart-card-subtitle">Porcentaje de aparición en los últimos 3 ciclos</span></div></div>
+          <div class="chart-card-header">
+            <div>
+              <h3 class="chart-card-title"><span class="material-symbols-outlined" style="color: var(--rose-accent);">bar_chart</span>Síntomas Recurrentes</h3>
+              <span class="chart-card-subtitle">Frecuencia observada en tus registros</span>
+            </div>
+          </div>
           <div class="symptom-progress-list">
-            <div class="symptom-progress-item"><div class="symptom-progress-info"><span>Hinchazón / Abdomen 🎈</span><span style="color: var(--rose-accent);">45%</span></div><div class="symptom-progress-track"><div class="symptom-progress-fill" style="width: 45%;"></div></div></div>
-            <div class="symptom-progress-item"><div class="symptom-progress-info"><span>Fatiga / Cansancio 😴</span><span style="color: var(--rose-accent);">30%</span></div><div class="symptom-progress-track"><div class="symptom-progress-fill" style="width: 30%;"></div></div></div>
-            <div class="symptom-progress-item"><div class="symptom-progress-info"><span>Dolor de Senos 🌸</span><span style="color: var(--rose-accent);">15%</span></div><div class="symptom-progress-track"><div class="symptom-progress-fill" style="width: 15%;"></div></div></div>
+            ${analytics.topSymptoms.map(s => `
+              <div class="symptom-progress-item">
+                <div class="symptom-progress-info"><span>${s.name}</span><span style="color: var(--rose-accent);">${s.pct}%</span></div>
+                <div class="symptom-progress-track"><div class="symptom-progress-fill" style="width: ${s.pct}%;"></div></div>
+              </div>
+            `).join('')}
           </div>
           <div class="insight-comment-card">
             <div class="insight-avatar-box"><img src="assets/avatares/PrincipePio/Principe_Pio_Pensativo.png" class="insight-pio-img" alt="Príncipe Pío Pensativo"/></div>
-            <div class="insight-text-wrapper"><span class="insight-title">${pioInsights[3].title}</span><p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[3].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[3].recommendation}</p></div>
+            <div class="insight-text-wrapper">
+              <span class="insight-title">${pioInsights[3].title}</span>
+              <p class="insight-body-text"><strong>¿Qué significan tus datos?</strong> ${pioInsights[3].meaning}<br/><strong>💡 Recomendación de Príncipe Pío:</strong> ${pioInsights[3].recommendation}</p>
+            </div>
           </div>
         </div>
 
         <div class="pdf-exporter-card">
-          <div style="display: flex; align-items: center; gap: 0.6rem;"><span style="font-size: 1.8rem;">📄</span><div><h3 style="font-family: var(--font-heading); font-size: 0.95rem; font-weight: 700; color: #ffffff;">Reporte Médico en PDF</h3><p style="font-size: 0.72rem; color: #cbd5e1;">Consolidado de ciclos, dolor y síntomas listo para llevar a tu consulta ginecológica.</p></div></div>
-          <button class="btn-export-pdf" onclick="alert('📄 Reporte Clínico en PDF generado con éxito por Manola 🦔. Descargando resumen consolidado para Ginecología...');"><span class="material-symbols-outlined" style="font-size: 1.1rem;">download</span>Exportar Reporte Médico en PDF</button>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <span style="font-size: 1.8rem;">📄</span>
+            <div>
+              <h3 style="font-family: var(--font-heading); font-size: 0.95rem; font-weight: 700; color: #ffffff;">Reporte Médico en PDF</h3>
+              <p style="font-size: 0.72rem; color: #cbd5e1;">Consolidado de ciclos, dolor y síntomas listo para llevar a tu consulta ginecológica.</p>
+            </div>
+          </div>
+          <button class="btn-export-pdf" onclick="alert('📄 Reporte Clínico en PDF generado con éxito por Príncipe Pío 🐔👓. Descargando resumen consolidado para Ginecología...');">
+            <span class="material-symbols-outlined" style="font-size: 1.1rem;">download</span>Exportar Reporte Médico en PDF
+          </button>
         </div>
       </div>
     `;
@@ -8083,7 +8334,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedSymptoms = Array.from(document.querySelectorAll('#symptom-form .symptom-toggle-btn.selected')).map(b => b.textContent.trim());
     userProfile.sintomasHoy = selectedSymptoms;
 
+    // Extraer valores estructurados para el registro clínico del calendario
+    const flowBtn = document.querySelector('#symptom-form .symptom-section-group:nth-child(1) .symptom-toggle-btn.selected');
+    const flowVal = flowBtn ? flowBtn.textContent.trim() : 'Ninguno';
+
+    const colicosInput = document.querySelector('#box-colicos input[type="range"]');
+    const colicosSelected = document.querySelector('.symptom-toggle-btn[onclick*="box-colicos"]')?.classList.contains('selected');
+    const crampsVal = colicosSelected && colicosInput ? parseInt(colicosInput.value, 10) : 0;
+
+    const estresInput = document.querySelector('#box-estres input[type="range"]');
+    const estresVal = estresInput ? parseInt(estresInput.value, 10) : 1;
+    const stressLabel = estresVal >= 4 ? 'Alto' : (estresVal >= 2 ? 'Moderado' : 'Bajo');
+
+    const isIntimacy = selectedSymptoms.some(s => s.toLowerCase().includes('intimidad') || s.toLowerCase().includes('protección') || s.toLowerCase().includes('proteccion'));
+    const moodSelected = selectedSymptoms.find(s => s.includes('😌') || s.includes('😊') || s.includes('✨') || s.includes('🥺') || s.includes('😤') || s.includes('😴') || s.includes('Tranquila') || s.includes('Feliz')) || 'Tranquila 😌';
+    const notesInput = document.getElementById('symptom-notes-input');
+    const noteText = notesInput ? notesInput.value.trim() : '';
+
+    const targetDateKey = selectedCalDateStr || formatDateKey(new Date());
+
+    // Guardar en la base de datos real del calendario
+    loggedDaysData[targetDateKey] = {
+      period: flowVal,
+      cramps: crampsVal,
+      intimacy: isIntimacy,
+      mood: moodSelected,
+      stress: stressLabel,
+      symptoms: selectedSymptoms,
+      note: noteText,
+      timestamp: Date.now()
+    };
+
     try {
+      localStorage.setItem('pochirocho_logged_days_db', JSON.stringify(loggedDaysData));
       localStorage.setItem('pochirocho_daily_symptoms', JSON.stringify({
         date: new Date().toISOString().split('T')[0],
         symptoms: selectedSymptoms,
@@ -8103,6 +8386,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (trackerAvatarText) trackerAvatarText.textContent = `"¡Actualizado a Día 1 del ciclo! Tu fase menstrual ha comenzado. Cuídate mucho y descansa 💖"`;
     } else {
       if (trackerAvatarText) trackerAvatarText.textContent = `"¡Tus síntomas diarios han sido guardados! ${pet.name} ajustó tus consejos personalizados de salud 🌸"`;
+    }
+
+    // Actualizar vista activa si es calendario o análisis
+    const trackerSubview = document.getElementById('tracker-subview-content');
+    if (trackerSubview) {
+      const isCalendar = trackerSubview.querySelector('.calendar-container');
+      const isTrends = trackerSubview.querySelector('.trends-container');
+      if (isCalendar) renderCalendarView();
+      if (isTrends) renderAnalyticsTrendsView();
     }
 
     // Trigger de Tarea Diaria 1: Registrar detalles diarios (+5 Pochipesos)

@@ -274,22 +274,50 @@ export class SpotifyPsychoacousticEngine {
         queryParams.append('seed_genres', 'pop,latin');
       }
 
-      const recResponse = await fetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      let tracks = [];
+      try {
+        const recResponse = await fetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (recResponse.ok) {
+          const recData = await recResponse.json();
+          tracks = recData.tracks || [];
+        }
+      } catch (e) {}
 
-      if (!recResponse.ok) {
-        throw new Error(`SPOTIFY_REC_ERROR_${recResponse.status}`);
+      // Fallback 1: Si no hay tracks de recommendations, obtener top tracks de la usuaria
+      if (tracks.length === 0) {
+        try {
+          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=10&time_range=short_term', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (topTracksRes.ok) {
+            const topData = await topTracksRes.json();
+            tracks = topData.items || [];
+          }
+        } catch (e) {}
       }
 
-      const recData = await recResponse.json();
-      const tracks = recData.tracks || [];
+      // Fallback 2: Si aún no hay tracks, buscar por palabras clave psicoacústicas de la fase
+      if (tracks.length === 0) {
+        const searchKeyword = phase.toLowerCase().includes('menstrual') ? 'Acoustic calm' : (phase.toLowerCase().includes('lutea') ? 'Chill lofi' : 'Pop motivation');
+        try {
+          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=5`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            tracks = searchData.tracks?.items || [];
+          }
+        } catch (e) {}
+      }
 
       if (tracks.length === 0) {
-        throw new Error('NO_TRACKS_RETURNED');
+        throw new Error('NO_TRACKS_AVAILABLE');
       }
 
-      const selectedTrack = tracks[0];
+      // Elegir aleatoriamente entre los mejores candidatos para variedad
+      const selectedTrack = tracks[Math.floor(Math.random() * Math.min(tracks.length, 5))];
 
       return {
         isConnected: true,
@@ -298,7 +326,7 @@ export class SpotifyPsychoacousticEngine {
         track: {
           id: selectedTrack.id,
           name: selectedTrack.name,
-          artist: selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de tu biblioteca',
+          artist: selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify',
           albumName: selectedTrack.album?.name || '',
           albumCover: selectedTrack.album?.images?.[0]?.url || 'assets/ui/spotify_default_cover.png',
           previewUrl: selectedTrack.preview_url,

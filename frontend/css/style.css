@@ -52,6 +52,9 @@
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
 }
 
 html,
@@ -164,7 +167,7 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s ease;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
 }
 
 .app-view.active {
@@ -174,16 +177,16 @@ body {
 }
 
 #view-home.app-view {
-  transform: scale(1);
+  transform: none;
 }
 
 #view-tracker.app-view {
-  transform: scale(0.96);
+  transform: none;
   padding: 1.1rem 1.15rem 0.35rem;
 }
 
 #view-tracker.app-view.active {
-  transform: scale(1);
+  transform: none;
 }
 
 #view-shop.app-view {

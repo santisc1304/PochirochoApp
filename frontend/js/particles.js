@@ -7,10 +7,13 @@
   if (!canvas) return;
   
   const ctx = canvas.getContext('2d');
-  let width, height;
+  let width = 0, height = 0;
   let particles = [];
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const PARTICLE_COUNT = isMobile ? 30 : 60;
+  const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice);
+  const PARTICLE_COUNT = isMobile ? 14 : 45;
+  let isPaused = false;
+  let animFrameId = null;
   
   let mouse = { x: -1000, y: -1000 };
 
@@ -26,17 +29,16 @@
     }
 
     reset(initial = false) {
-      this.x = Math.random() * width;
-      this.y = initial ? Math.random() * height : height + 10;
-      this.radius = Math.random() * 2 + 0.5;
-      this.baseOpacity = Math.random() * 0.7 + 0.2;
+      this.x = Math.random() * (width || 360);
+      this.y = initial ? Math.random() * (height || 640) : (height || 640) + 10;
+      this.radius = Math.random() * 1.8 + 0.6;
+      this.baseOpacity = Math.random() * 0.55 + 0.15;
       this.opacity = this.baseOpacity;
-      this.vx = (Math.random() - 0.5) * 0.4;
-      this.vy = -(Math.random() * 0.5 + 0.2);
-      this.pulseSpeed = Math.random() * 0.03 + 0.01;
+      this.vx = (Math.random() - 0.5) * 0.3;
+      this.vy = -(Math.random() * 0.4 + 0.15);
+      this.pulseSpeed = Math.random() * 0.02 + 0.01;
       this.pulseAngle = Math.random() * Math.PI * 2;
       
-      // Color variants: Pure White, Starlight Gold, Crimson Glow
       const randColor = Math.random();
       if (randColor > 0.85) {
         this.color = '255, 185, 80'; // Starlight Gold
@@ -51,25 +53,22 @@
       this.x += this.vx;
       this.y += this.vy;
       
-      // Twinkle pulsation
       this.pulseAngle += this.pulseSpeed;
-      this.opacity = this.baseOpacity + Math.sin(this.pulseAngle) * 0.25;
+      this.opacity = this.baseOpacity + Math.sin(this.pulseAngle) * 0.2;
 
-      // Mild reaction to mouse proximity relative to canvas
-      const rect = canvas.getBoundingClientRect();
-      const relMouseX = mouse.x - rect.left;
-      const relMouseY = mouse.y - rect.top;
-
-      const dx = relMouseX - this.x;
-      const dy = relMouseY - this.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 100) {
-        const force = (100 - dist) / 100;
-        this.x -= (dx / dist) * force * 1.5;
-        this.y -= (dy / dist) * force * 1.5;
+      // Interacción solo en desktop con puntero de ratón
+      if (!isTouchDevice && mouse.x > 0) {
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < 6400) { // 80px radio
+          const dist = Math.sqrt(distSq);
+          const force = (80 - dist) / 80;
+          this.x -= (dx / dist) * force * 1.2;
+          this.y -= (dy / dist) * force * 1.2;
+        }
       }
 
-      // Reset when floating out of top or side bounds
       if (this.y < -10 || this.x < -20 || this.x > width + 20) {
         this.reset(false);
       }
@@ -92,27 +91,54 @@
   }
 
   function animate() {
+    if (isPaused) return;
     ctx.clearRect(0, 0, width, height);
     for (let i = 0; i < particles.length; i++) {
       particles[i].update();
       particles[i].draw();
     }
-    requestAnimationFrame(animate);
+    animFrameId = requestAnimationFrame(animate);
   }
+
+  window.pauseParticleCanvas = function() {
+    isPaused = true;
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+  };
+
+  window.resumeParticleCanvas = function() {
+    if (isPaused) {
+      isPaused = false;
+      animate();
+    }
+  };
+
+  // Pausar automáticamente cuando la pestaña está en segundo plano
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      window.pauseParticleCanvas();
+    } else {
+      window.resumeParticleCanvas();
+    }
+  });
 
   window.addEventListener('resize', () => {
     resizeCanvas();
   });
 
-  window.addEventListener('mousemove', (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-  });
+  if (!isTouchDevice) {
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
 
-  window.addEventListener('mouseleave', () => {
-    mouse.x = -1000;
-    mouse.y = -1000;
-  });
+    window.addEventListener('mouseleave', () => {
+      mouse.x = -1000;
+      mouse.y = -1000;
+    });
+  }
 
   init();
   animate();

@@ -1201,7 +1201,7 @@ const GeminiConfig = {
 class SpotifyPsychoacousticEngine {
   static CLIENT_ID = 'fa292c3f485d40a4ba4fa1d17e61dd96'; // Client ID oficial de Spotify
   static REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'http://localhost:8000/';
-  static SCOPES = 'user-top-read user-read-recently-played user-read-playback-state';
+  static SCOPES = 'user-top-read user-read-recently-played user-read-playback-state user-library-read';
 
   static getClientId() {
     if (typeof localStorage !== 'undefined') {
@@ -1252,6 +1252,8 @@ class SpotifyPsychoacousticEngine {
       localStorage.removeItem('pochirocho_spotify_expires_at');
       localStorage.removeItem('pochirocho_spotify_user_profile');
       localStorage.removeItem('pochirocho_spotify_top_artists');
+      localStorage.removeItem('pochirocho_spotify_top_tracks');
+      localStorage.removeItem('pochirocho_spotify_liked_tracks');
     }
   }
 
@@ -1321,6 +1323,9 @@ class SpotifyPsychoacousticEngine {
     }
   }
 
+  /**
+   * Descarga el perfil completo y el repertorio histórico (artistas, tracks favoritos y me gusta)
+   */
   static async fetchAndStoreUserProfile() {
     const token = this.getStoredToken();
     if (!token) return null;
@@ -1334,16 +1339,52 @@ class SpotifyPsychoacousticEngine {
         localStorage.setItem('pochirocho_spotify_user_profile', JSON.stringify(profile));
       }
 
-      // Guardar top artists de la usuaria
-      const artistsRes = await fetch('https://api.spotify.com/v1/me/top/artists?limit=10&time_range=medium_term', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (artistsRes.ok) {
-        const topArtistsData = await artistsRes.json();
-        localStorage.setItem('pochirocho_spotify_top_artists', JSON.stringify(topArtistsData.items || []));
-      }
+      // 1. Artistas favoritos históricos (long_term) y actuales (medium_term)
+      try {
+        let artistsRes = await fetch('https://api.spotify.com/v1/me/top/artists?limit=20&time_range=long_term', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!artistsRes.ok) {
+          artistsRes = await fetch('https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+        if (artistsRes.ok) {
+          const topArtistsData = await artistsRes.json();
+          localStorage.setItem('pochirocho_spotify_top_artists', JSON.stringify(topArtistsData.items || []));
+        }
+      } catch (e) {}
+
+      // 2. Canciones favoritas históricas (top tracks long_term)
+      try {
+        let tracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=long_term', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!tracksRes.ok) {
+          tracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=medium_term', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+        if (tracksRes.ok) {
+          const topTracksData = await tracksRes.json();
+          localStorage.setItem('pochirocho_spotify_top_tracks', JSON.stringify(topTracksData.items || []));
+        }
+      } catch (e) {}
+
+      // 3. Canciones con "Me Gusta" (Liked Songs)
+      try {
+        const likedRes = await fetch('https://api.spotify.com/v1/me/tracks?limit=20', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (likedRes.ok) {
+          const likedData = await likedRes.json();
+          const likedTracks = (likedData.items || []).map(item => item.track).filter(Boolean);
+          localStorage.setItem('pochirocho_spotify_liked_tracks', JSON.stringify(likedTracks));
+        }
+      } catch (e) {}
+
     } catch (err) {
-      console.warn('Error al sincronizar perfil de Spotify:', err);
+      console.warn('Error al sincronizar biblioteca de Spotify:', err);
     }
   }
 
@@ -1360,65 +1401,106 @@ class SpotifyPsychoacousticEngine {
       target_tempo: 100,
       target_acousticness: 0.3,
       target_danceability: 0.5,
-      reasonText: 'Sintonía equilibrada para acompañar tu día'
+      target_instrumentalness: 0.05,
+      target_mode: 1
     };
 
     // 1. Calibración por Fase Hormonal
     if (p.includes('menstrual') || p.includes('regla')) {
-      targets.target_energy = 0.28;
-      targets.target_valence = 0.42;
-      targets.target_tempo = 68;
-      targets.target_acousticness = 0.75;
+      targets.target_energy = 0.25;
+      targets.target_valence = 0.40;
+      targets.target_tempo = 65;
+      targets.target_acousticness = 0.80;
       targets.target_danceability = 0.35;
-      targets.reasonText = 'Frecuencias y ritmos suaves para reducir cortisol y relajar el miometrio';
+      targets.target_mode = 0; // Armonías menores reconfortantes
     } else if (p.includes('folicular')) {
       targets.target_energy = 0.72;
       targets.target_valence = 0.80;
       targets.target_tempo = 118;
       targets.target_acousticness = 0.25;
       targets.target_danceability = 0.70;
-      targets.reasonText = 'Ritmos frescos y motivadores para acompañar el ascenso de tus estrógenos';
+      targets.target_mode = 1; // Modo mayor alegre
     } else if (p.includes('ovulatoria')) {
       targets.target_energy = 0.88;
       targets.target_valence = 0.88;
-      targets.target_tempo = 126;
+      targets.target_tempo = 128;
       targets.target_acousticness = 0.15;
       targets.target_danceability = 0.85;
-      targets.reasonText = 'Máxima vitalidad y ritmo para celebrar tu pico de energía y confianza';
+      targets.target_mode = 1;
     } else if (p.includes('lutea') || p.includes('lútea') || p.includes('premenstrual')) {
-      targets.target_energy = 0.38;
-      targets.target_valence = 0.48;
+      targets.target_energy = 0.35;
+      targets.target_valence = 0.45;
       targets.target_tempo = 74;
-      targets.target_acousticness = 0.55;
+      targets.target_acousticness = 0.60;
       targets.target_danceability = 0.40;
-      targets.reasonText = 'Sonoridades envolventes que estabilizan la serotonina y calman la reactividad premenstrual';
+      targets.target_mode = 0;
     }
 
     // 2. Moduladores por Síntomas Físicos y Emocionales Registrados
     const hasCramps = s.some(sym => sym.includes('cólico') || sym.includes('colico') || sym.includes('dolor'));
     const hasFatigue = s.some(sym => sym.includes('fatiga') || sym.includes('cansancio') || sym.includes('insomnio'));
     const hasAnxiety = s.some(sym => sym.includes('ansiedad') || sym.includes('estrés') || sym.includes('estres') || sym.includes('triste'));
+    const hasHeadache = s.some(sym => sym.includes('cabeza') || sym.includes('migraña') || sym.includes('migrana'));
 
     if (hasCramps) {
-      targets.target_energy = Math.max(0.20, targets.target_energy - 0.15);
-      targets.target_tempo = Math.max(60, targets.target_tempo - 12);
-      targets.target_acousticness = Math.min(0.90, targets.target_acousticness + 0.20);
-      targets.reasonText = 'Melodía suave calibrada para calmar los cólicos y la tensión pélvica de hoy';
+      targets.target_energy = Math.max(0.18, targets.target_energy - 0.15);
+      targets.target_tempo = Math.max(60, targets.target_tempo - 10);
+      targets.target_acousticness = Math.min(0.92, targets.target_acousticness + 0.20);
     } else if (hasFatigue) {
-      targets.target_energy = Math.max(0.18, targets.target_energy - 0.20);
-      targets.target_tempo = Math.max(55, targets.target_tempo - 15);
-      targets.reasonText = 'Música serena y reconfortante para dar descanso a tu cuerpo hoy';
+      targets.target_energy = Math.max(0.18, targets.target_energy - 0.18);
+      targets.target_tempo = Math.max(58, targets.target_tempo - 12);
     } else if (hasAnxiety) {
-      targets.target_valence = Math.min(0.65, targets.target_valence + 0.10);
-      targets.target_energy = 0.35;
-      targets.reasonText = 'Textura acústica anti-ansiedad para restaurar la calma de tu mente';
+      targets.target_valence = Math.min(0.60, targets.target_valence + 0.10);
+      targets.target_energy = 0.30;
+    }
+
+    if (hasHeadache) {
+      targets.target_instrumentalness = 0.65; // Menor presencia vocal para evitar fatiga sensorial
     }
 
     return targets;
   }
 
   /**
-   * Obtiene la recomendación de canción usando los artistas favoritos de la usuaria
+   * Genera una explicación clínica dinámica basada en el artista, pista, tempo y fase
+   */
+  static buildDynamicReason(artistName = '', trackName = '', phase = 'Ovulatoria', symptoms = [], tempo = 100) {
+    const p = phase.toLowerCase();
+    const s = symptoms.map(sym => String(sym).toLowerCase());
+    const art = artistName || 'tu artista favorito';
+
+    const hasCramps = s.some(sym => sym.includes('cólico') || sym.includes('colico') || sym.includes('dolor'));
+    const hasFatigue = s.some(sym => sym.includes('fatiga') || sym.includes('cansancio'));
+    const hasStress = s.some(sym => sym.includes('estrés') || sym.includes('ansiedad'));
+
+    if (hasCramps) {
+      return `Atenuación somática con ritmo relajado a ${tempo} BPM de ${art} para reducir espasmos y relajar el miometrio.`;
+    }
+    if (hasFatigue) {
+      return `Cadencia serena de ${art} calibrada para regenerar energía mitocondrial y brindar descanso a tu cuerpo.`;
+    }
+    if (hasStress) {
+      return `Frecuencias armónicas anti-cortisol de ${art} para restaurar la calma del sistema nervioso autónomo.`;
+    }
+
+    if (p.includes('menstrual')) {
+      return `Acústica suave a ${tempo} BPM de ${art} diseñada para elevar la oxitocina y brindar alivio uterino en tu Fase Menstrual.`;
+    }
+    if (p.includes('folicular')) {
+      return `Sonoridad vibrante a ${tempo} BPM de ${art} para potenciar el ascenso natural de tus estrógenos y tu creatividad.`;
+    }
+    if (p.includes('ovulatoria')) {
+      return `Máxima vitalidad y ritmo bailable a ${tempo} BPM de ${art} para acompañar tu pico de confianza y magnetismo ovulatorio.`;
+    }
+    if (p.includes('lutea') || p.includes('lútea')) {
+      return `Textura melódica envolvente a ${tempo} BPM de ${art} para estabilizar la serotonina y apaciguar la reactividad premenstrual.`;
+    }
+
+    return `Sintonía seleccionada de ${art} a ${tempo} BPM para armonizar tu ritmo cardíaco y tu bienestar de hoy.`;
+  }
+
+  /**
+   * Obtiene la recomendación de canción usando el repertorio completo de la usuaria
    */
   static async getRecommendationForUser(phase = 'Ovulatoria', symptoms = []) {
     const token = this.getStoredToken();
@@ -1433,41 +1515,46 @@ class SpotifyPsychoacousticEngine {
     }
 
     try {
-      // 1. Obtener los artistas favoritos de la usuaria para usarlos como semillas
+      // 1. Extraer semillas de artistas históricos, canciones favoritas y canciones con me gusta
       let seedArtists = [];
-      const storedArtists = localStorage.getItem('pochirocho_spotify_top_artists');
-      if (storedArtists) {
-        try {
-          const parsed = JSON.parse(storedArtists);
-          seedArtists = parsed.slice(0, 3).map(a => a.id);
-        } catch (e) {}
-      }
+      let seedTracks = [];
 
-      if (seedArtists.length === 0) {
-        const topRes = await fetch('https://api.spotify.com/v1/me/top/artists?limit=3', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (topRes.ok) {
-          const topData = await topRes.json();
-          seedArtists = (topData.items || []).map(a => a.id);
+      try {
+        const storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
+        if (storedArtists.length) {
+          seedArtists = storedArtists.slice(0, 5).map(a => a.id);
         }
-      }
+      } catch (e) {}
 
-      // Fallback a top tracks si no hay artistas suficientes
+      try {
+        const storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
+        if (storedTracks.length) {
+          seedTracks = storedTracks.slice(0, 5).map(t => t.id);
+        }
+      } catch (e) {}
+
+      let tracks = [];
+
+      // Intento 1: Spotify Recommendations API con semillas de sus artistas/tracks favoritos
       let queryParams = new URLSearchParams({
-        limit: '5',
+        limit: '15',
         target_energy: acousticTargets.target_energy.toFixed(2),
         target_valence: acousticTargets.target_valence.toFixed(2),
-        target_tempo: Math.round(acousticTargets.target_tempo).toString()
+        target_tempo: Math.round(acousticTargets.target_tempo).toString(),
+        target_acousticness: acousticTargets.target_acousticness.toFixed(2),
+        target_danceability: acousticTargets.target_danceability.toFixed(2)
       });
 
       if (seedArtists.length > 0) {
-        queryParams.append('seed_artists', seedArtists.slice(0, 3).join(','));
-      } else {
-        queryParams.append('seed_genres', 'pop,latin');
+        queryParams.append('seed_artists', seedArtists.slice(0, 2).join(','));
+      }
+      if (seedTracks.length > 0) {
+        queryParams.append('seed_tracks', seedTracks.slice(0, 2).join(','));
+      }
+      if (!seedArtists.length && !seedTracks.length) {
+        queryParams.append('seed_genres', 'pop,latin,indie');
       }
 
-      let tracks = [];
       try {
         const recResponse = await fetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -1478,10 +1565,19 @@ class SpotifyPsychoacousticEngine {
         }
       } catch (e) {}
 
-      // Fallback 1: Si no hay tracks de recommendations, obtener top tracks de la usuaria
+      // Fallback 1: Si no hay tracks de recommendations, usar canciones con Me Gusta o Top Tracks históricos
       if (tracks.length === 0) {
         try {
-          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=10&time_range=short_term', {
+          const liked = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
+          const topTr = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
+          tracks = [...liked, ...topTr];
+        } catch (e) {}
+      }
+
+      // Fallback 2: Consultar directamente las canciones más escuchadas de toda la vida
+      if (tracks.length === 0) {
+        try {
+          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=long_term', {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (topTracksRes.ok) {
@@ -1491,11 +1587,11 @@ class SpotifyPsychoacousticEngine {
         } catch (e) {}
       }
 
-      // Fallback 2: Si aún no hay tracks, buscar por palabras clave psicoacústicas de la fase
+      // Fallback 3: Búsqueda temática según la fase
       if (tracks.length === 0) {
-        const searchKeyword = phase.toLowerCase().includes('menstrual') ? 'Acoustic calm' : (phase.toLowerCase().includes('lutea') ? 'Chill lofi' : 'Pop motivation');
+        const searchKeyword = phase.toLowerCase().includes('menstrual') ? 'Acoustic relaxation' : (phase.toLowerCase().includes('lutea') ? 'Chill lofi' : 'Pop energy');
         try {
-          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=5`, {
+          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=10`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (searchRes.ok) {
@@ -1510,16 +1606,22 @@ class SpotifyPsychoacousticEngine {
       }
 
       // Elegir aleatoriamente entre los mejores candidatos para variedad
-      const selectedTrack = tracks[Math.floor(Math.random() * Math.min(tracks.length, 5))];
+      const selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
+      const artistName = selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify';
+      const tempo = Math.round(acousticTargets.target_tempo);
+      const dynamicReason = this.buildDynamicReason(artistName, selectedTrack.name, phase, symptoms, tempo);
 
       return {
         isConnected: true,
         phase,
-        acousticTargets,
+        acousticTargets: {
+          ...acousticTargets,
+          reasonText: dynamicReason
+        },
         track: {
           id: selectedTrack.id,
           name: selectedTrack.name,
-          artist: selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify',
+          artist: artistName,
           albumName: selectedTrack.album?.name || '',
           albumCover: selectedTrack.album?.images?.[0]?.url || 'assets/ui/spotify_default_cover.png',
           previewUrl: selectedTrack.preview_url,
@@ -1848,7 +1950,7 @@ DIRECTRICES:
  */
 
 class ShopRewardsEngine {
-  constructor(coins = 350, streakDays = 5, totalRoutines = 0) {
+  constructor(coins = 0, streakDays = 0, totalRoutines = 0) {
     this.coins = coins;
     this.streakDays = streakDays;
     this.totalRoutinesCompleted = totalRoutines;
@@ -1867,6 +1969,40 @@ class ShopRewardsEngine {
     };
 
     this.loadState();
+  }
+
+  static computeDynamicStreak(loggedDays = {}) {
+    if (!loggedDays || typeof loggedDays !== 'object') return 0;
+    const dates = Object.keys(loggedDays);
+    if (dates.length === 0) return 0;
+
+    const pad = n => String(n).padStart(2, '0');
+    const toKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const now = new Date();
+    const todayStr = toKey(now);
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const yestStr = toKey(yest);
+
+    if (!loggedDays[todayStr] && !loggedDays[yestStr]) {
+      return 0;
+    }
+
+    let streak = 0;
+    let curr = loggedDays[todayStr] ? new Date(now) : new Date(yest);
+
+    while (true) {
+      const k = toKey(curr);
+      if (loggedDays[k]) {
+        streak++;
+        curr.setDate(curr.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   loadState() {
@@ -3966,8 +4102,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const userProfile = new UserProfileModel();
   const aiEngine = new HealthAIAgentEngine();
 
-  let userCoins = 350;
-  let userStreakDays = 5;
+  let userCoins = 0;
+  let userStreakDays = 0;
   let hasEnteredTrackerFromHome = false;
   let currentShopCategory = 'external';
   let activeTab = 'dashboard';
@@ -4017,14 +4153,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateCoinsUI() {
     userCoins = rewardsEngine.coins;
+    userStreakDays = ShopRewardsEngine.computeDynamicStreak(loggedDaysData);
+    rewardsEngine.streakDays = userStreakDays;
     const homePts = document.getElementById('home-points-val');
     if (homePts) homePts.textContent = userCoins;
     const shopPts = document.getElementById('shop-coins-counter');
     if (shopPts) shopPts.textContent = userCoins;
     const homeStreak = document.getElementById('home-streak-val');
-    if (homeStreak) homeStreak.textContent = `${rewardsEngine.streakDays} Días`;
+    if (homeStreak) homeStreak.textContent = `${userStreakDays} Días`;
     const achStreak = document.getElementById('achievements-streak-counter');
-    if (achStreak) achStreak.textContent = `${rewardsEngine.streakDays} Días`;
+    if (achStreak) achStreak.textContent = `${userStreakDays} Días`;
     rewardsEngine.saveState();
   }
   window.updateCoinsUI = updateCoinsUI;
@@ -4736,7 +4874,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Actualizar UserProfileModel
     userProfile.nombre = inputName;
-    userProfile.lmpFecha = new Date(obSelectedLmpDateStr).toISOString();
+    userProfile.lmpFecha = obSelectedLmpDateStr;
     userProfile.duracionPromedioCiclo = cycleLength;
     userProfile.duracionPromedioPeriodo = periodLength;
     userProfile.regularidad = obSelectedRegularity;
@@ -4762,14 +4900,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let inferredPhase = 'Ovulatoria';
     let inferredDay = 14;
     try {
-      const today = new Date();
-      const lmpDate = new Date(userProfile.lmpFecha);
-      const diffDays = Math.floor(Math.abs(today - lmpDate) / (1000 * 60 * 60 * 24));
-      inferredDay = (diffDays % cycleLength) + 1;
-      if (inferredDay <= periodLength) inferredPhase = 'Menstrual';
-      else if (inferredDay <= (cycleLength - 14) - 2) inferredPhase = 'Folicular';
-      else if (inferredDay <= (cycleLength - 14) + 2) inferredPhase = 'Ovulatoria';
-      else inferredPhase = 'Lutea';
+      const phaseInfo = getCyclePhaseForDate(new Date());
+      inferredPhase = phaseInfo.phaseKey;
+      inferredDay = phaseInfo.cycleDay;
     } catch(e) {}
 
     // 4. Transición fluida hacia Home Screen
@@ -5172,6 +5305,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${y}-${m}-${d}`;
   }
 
+  function parseSafeDate(val) {
+    if (!val) return new Date();
+    if (val instanceof Date) return new Date(val.getFullYear(), val.getMonth(), val.getDate(), 12, 0, 0);
+    let str = String(val).trim();
+    if (str.includes('T')) str = str.split('T')[0];
+    const parts = str.split('-').map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+    }
+    const d = new Date(val);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+  }
+
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -5189,11 +5335,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getCyclePhaseForDate(dateObj) {
-    let lmpDate = userProfile?.lmpFecha ? new Date(userProfile.lmpFecha) : new Date();
-    const targetMidnight = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
-    const lmpMidnight = new Date(lmpDate.getFullYear(), lmpDate.getMonth(), lmpDate.getDate()).getTime();
+    const lmpDate = parseSafeDate(userProfile?.lmpFecha);
+    const targetDate = parseSafeDate(dateObj);
     
-    const diffDays = Math.floor((targetMidnight - lmpMidnight) / (1000 * 3600 * 24));
+    const diffDays = Math.round((targetDate.getTime() - lmpDate.getTime()) / (1000 * 3600 * 24));
     const cycleLen = parseInt(userProfile?.duracionPromedioCiclo, 10) || 28;
     const periodLen = parseInt(userProfile?.duracionPromedioPeriodo, 10) || 5;
 
@@ -5437,6 +5582,8 @@ document.addEventListener('DOMContentLoaded', () => {
     clearTrackerTimeouts();
     const pet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
 
+    if (window.pauseParticleCanvas) window.pauseParticleCanvas();
+
     // PASO 1: Establecer inmediatamente la imagen y texto de Feliz ANTES de activar la vista
     updateAvatarDisplay('Feliz');
     const trackerImg = document.getElementById('tracker-avatar-img');
@@ -5483,6 +5630,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateAvatarDisplay(null);
       if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
       renderSpotifyDashboardCard(true);
+      if (window.resumeParticleCanvas) window.resumeParticleCanvas();
     }, 2600));
   }
 

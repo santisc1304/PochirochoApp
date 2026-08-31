@@ -1212,12 +1212,15 @@ class SpotifyPsychoacousticEngine {
   }
 
   static getRedirectUri() {
-    if (typeof window !== 'undefined') {
-      let uri = window.location.origin + window.location.pathname;
-      if (!uri.endsWith('/') && !uri.includes('.')) {
-        uri += '/';
+    if (typeof localStorage !== 'undefined') {
+      const custom = localStorage.getItem('pochirocho_spotify_custom_redirect');
+      if (custom && custom.trim().length > 0) {
+        return custom.trim();
       }
-      return uri;
+    }
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin.replace(/\/+$/, '');
+      return origin + '/';
     }
     return this.REDIRECT_URI;
   }
@@ -5269,24 +5272,24 @@ document.addEventListener('DOMContentLoaded', () => {
     enhancedSlab.classList.add('animate-fall-delayed');
     if (avatarSection) avatarSection.classList.add('animate-full-fluid-entrance');
 
-    // PASO 2: Cae el slab - el avatar se asusta (Asustado/Asustada) a los 350ms
+    // PASO 2: Cae el slab - el avatar se asusta (Asustado/Asustada)
     trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay('Asustado');
       if (avatarSpeechText) avatarSpeechText.textContent = pet.quotes.trackerScared;
-    }, 350));
+    }, 1050));
 
-    // PASO 3: El avatar esquiva y suspira aliviado (Aliviado/Aliviada) a los 850ms
+    // PASO 3: El avatar esquiva y suspira aliviado (Aliviado/Aliviada)
     trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay('Aliviado');
       if (avatarSpeechText) avatarSpeechText.textContent = pet.quotes.trackerRelieved;
-    }, 850));
+    }, 1850));
 
-    // PASO 4: Se asienta en el estado de su fase activa del ciclo + Spotify a los 1400ms
+    // PASO 4: Se asienta en el estado de su fase activa del ciclo (Menstrual/Folicular/Ovulatoria/Lutea) + Spotify
     trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay(null);
       if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
       renderSpotifyDashboardCard(true);
-    }, 1400));
+    }, 2600));
   }
 
   function navigateToHome() {
@@ -8229,16 +8232,25 @@ document.addEventListener('DOMContentLoaded', () => {
             `}
           </div>
 
-          <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(29, 185, 84, 0.25); border-radius: 12px; padding: 0.65rem; margin-top: 0.6rem;">
-            <label style="font-size: 0.7rem; color: #a7f3d0; display: block; margin-bottom: 0.25rem; font-weight: 700;">
+          <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(29, 185, 84, 0.25); border-radius: 12px; padding: 0.65rem; margin-top: 0.6rem; display:flex; flex-direction:column; gap:0.45rem;">
+            <label style="font-size: 0.7rem; color: #a7f3d0; display: block; font-weight: 700;">
               🔑 Spotify Client ID (Developer Dashboard):
             </label>
             <div style="display:flex; gap:0.4rem;">
-              <input type="text" id="setting-spotify-client-id" value="${localStorage.getItem('pochirocho_spotify_client_id') || ''}" placeholder="Pega tu Client ID de Spotify..." style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:white; font-size:0.72rem; font-family:monospace;" />
+              <input type="text" id="setting-spotify-client-id" value="${localStorage.getItem('pochirocho_spotify_client_id') || SpotifyPsychoacousticEngine.CLIENT_ID}" placeholder="Client ID de Spotify..." style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:white; font-size:0.72rem; font-family:monospace;" />
               <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_client_id', document.getElementById('setting-spotify-client-id').value.trim()); alert('Client ID de Spotify guardado exitosamente.');">Guardar</button>
             </div>
-            <span style="font-size: 0.63rem; color: #94a3b8; margin-top: 0.35rem; display: block; line-height: 1.3;">
-              Para conectar tu app real, crea tu app en <strong>developer.spotify.com/dashboard</strong> y añade Redirect URI: <code style="color:#38bdf8;">${window.location.origin + window.location.pathname}</code>
+
+            <label style="font-size: 0.7rem; color: #a7f3d0; display: block; font-weight: 700; margin-top:0.25rem;">
+              🔗 Redirect URI enviada a Spotify:
+            </label>
+            <div style="display:flex; gap:0.4rem;">
+              <input type="text" id="setting-spotify-redirect-uri" value="${SpotifyPsychoacousticEngine.getRedirectUri()}" style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#38bdf8; font-size:0.72rem; font-family:monospace;" />
+              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_custom_redirect', document.getElementById('setting-spotify-redirect-uri').value.trim()); alert('Redirect URI personalizada guardada.');">Guardar</button>
+              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0; background:rgba(255,255,255,0.1);" onclick="navigator.clipboard.writeText(document.getElementById('setting-spotify-redirect-uri').value); alert('¡Redirect URI copiada al portapapeles!');">Copiar</button>
+            </div>
+            <span style="font-size: 0.63rem; color: #94a3b8; display: block; line-height: 1.3;">
+              Asegúrate de pegar exactamente esta URL en tu <strong>Spotify Developer Dashboard > Settings > Redirect URIs</strong>.
             </span>
           </div>
         </div>

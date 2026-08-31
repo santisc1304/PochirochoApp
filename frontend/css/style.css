@@ -1470,15 +1470,14 @@ body {
 }
 
 .enhanced-dashboard-slab.animate-fall-delayed {
-  animation: drop-slab-exact 0.75s cubic-bezier(0.18, 0.89, 0.32, 1.15) 0.15s forwards;
+  animation: drop-slab-exact 0.85s cubic-bezier(0.25, 1, 0.5, 1) 1.2s forwards;
   opacity: 0;
-  transform: translateY(-110px) scale(0.92);
-  will-change: transform, opacity;
+  transform: translateY(-170px) scale(0.9);
 }
 
 @keyframes drop-slab-exact {
   0% {
-    transform: translateY(-110px) scale(0.92);
+    transform: translateY(-170px) scale(0.9);
     opacity: 0;
   }
 
@@ -1568,20 +1567,23 @@ body {
 }
 
 .tracker-avatar-section.animate-full-fluid-entrance {
-  animation: spike-exact-relative-travel 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform;
+  animation: spike-exact-relative-travel 2.1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
 @keyframes spike-exact-relative-travel {
   0% {
-    transform: translate(20px, -65px);
+    transform: translate(32px, -170px);
   }
 
-  35% {
-    transform: translate(20px, -65px);
+  45% {
+    transform: translate(32px, -170px);
   }
 
-  75% {
+  50% {
+    transform: translate(32px, -170px);
+  }
+
+  85% {
     transform: translate(0px, 0px);
   }
 

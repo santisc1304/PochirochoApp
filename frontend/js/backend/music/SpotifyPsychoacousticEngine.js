@@ -19,12 +19,15 @@ export class SpotifyPsychoacousticEngine {
   }
 
   static getRedirectUri() {
-    if (typeof window !== 'undefined') {
-      let uri = window.location.origin + window.location.pathname;
-      if (!uri.endsWith('/') && !uri.includes('.')) {
-        uri += '/';
+    if (typeof localStorage !== 'undefined') {
+      const custom = localStorage.getItem('pochirocho_spotify_custom_redirect');
+      if (custom && custom.trim().length > 0) {
+        return custom.trim();
       }
-      return uri;
+    }
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin.replace(/\/+$/, '');
+      return origin + '/';
     }
     return this.REDIRECT_URI;
   }

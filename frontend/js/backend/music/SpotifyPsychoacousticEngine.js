@@ -20,7 +20,11 @@ export class SpotifyPsychoacousticEngine {
 
   static getRedirectUri() {
     if (typeof window !== 'undefined') {
-      return window.location.origin + window.location.pathname;
+      let uri = window.location.origin + window.location.pathname;
+      if (!uri.endsWith('/') && !uri.includes('.')) {
+        uri += '/';
+      }
+      return uri;
     }
     return this.REDIRECT_URI;
   }

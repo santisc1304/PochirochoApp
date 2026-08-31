@@ -1213,7 +1213,11 @@ class SpotifyPsychoacousticEngine {
 
   static getRedirectUri() {
     if (typeof window !== 'undefined') {
-      return window.location.origin + window.location.pathname;
+      let uri = window.location.origin + window.location.pathname;
+      if (!uri.endsWith('/') && !uri.includes('.')) {
+        uri += '/';
+      }
+      return uri;
     }
     return this.REDIRECT_URI;
   }
@@ -5220,7 +5224,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   window.renderSpotifyDashboardCard = renderSpotifyDashboardCard;
 
+  let isNavigatingToTracker = false;
+  let trackerAnimTimeouts = [];
+
+  function clearTrackerTimeouts() {
+    trackerAnimTimeouts.forEach(t => clearTimeout(t));
+    trackerAnimTimeouts = [];
+  }
+
   function navigateToTracker() {
+    if (isNavigatingToTracker) return;
+    isNavigatingToTracker = true;
+    setTimeout(() => { isNavigatingToTracker = false; }, 1600);
+
+    clearTrackerTimeouts();
     const pet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
 
     // PASO 1: Establecer inmediatamente la imagen y texto de Feliz ANTES de activar la vista
@@ -5245,29 +5262,31 @@ document.addEventListener('DOMContentLoaded', () => {
     enhancedSlab.classList.remove('animate-fall-delayed');
     if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
 
-    requestAnimationFrame(() => {
-      enhancedSlab.classList.add('animate-fall-delayed');
-      if (avatarSection) avatarSection.classList.add('animate-full-fluid-entrance');
-    });
+    // Forzar reflow limpio para reiniciar la animación CSS sin parpadeos
+    void enhancedSlab.offsetWidth;
+    if (avatarSection) void avatarSection.offsetWidth;
 
-    // PASO 2: Cae el slab - el avatar se asusta (Asustado/Asustada) a los 380ms
-    setTimeout(() => {
+    enhancedSlab.classList.add('animate-fall-delayed');
+    if (avatarSection) avatarSection.classList.add('animate-full-fluid-entrance');
+
+    // PASO 2: Cae el slab - el avatar se asusta (Asustado/Asustada) a los 350ms
+    trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay('Asustado');
       if (avatarSpeechText) avatarSpeechText.textContent = pet.quotes.trackerScared;
-    }, 380);
+    }, 350));
 
-    // PASO 3: El avatar esquiva y suspira aliviado (Aliviado/Aliviada) a los 880ms
-    setTimeout(() => {
+    // PASO 3: El avatar esquiva y suspira aliviado (Aliviado/Aliviada) a los 850ms
+    trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay('Aliviado');
       if (avatarSpeechText) avatarSpeechText.textContent = pet.quotes.trackerRelieved;
-    }, 880);
+    }, 850));
 
-    // PASO 4: Se asienta en el estado de su fase activa del ciclo + Spotify a los 1450ms
-    setTimeout(() => {
+    // PASO 4: Se asienta en el estado de su fase activa del ciclo + Spotify a los 1400ms
+    trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay(null);
       if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
       renderSpotifyDashboardCard(true);
-    }, 1450);
+    }, 1400));
   }
 
   function navigateToHome() {
@@ -8610,6 +8629,20 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAvatarDisplay();
     updateCoinsUI();
     updateConnectors();
+
+    // PROCESAR CALLBACK DE AUTENTICACIÓN DE SPOTIFY SI VIENE DE REDIRECCIÓN (OAuth PKCE)
+    if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+      SpotifyPsychoacousticEngine.handleAuthCallback().then(success => {
+        if (success) {
+          console.log('✅ Spotify conectado exitosamente.');
+          if (typeof updateSpotifySettingsStatus === 'function') updateSpotifySettingsStatus();
+          if (typeof renderSpotifyDashboardCard === 'function') renderSpotifyDashboardCard();
+          setTimeout(() => {
+            if (typeof navigateToTracker === 'function') navigateToTracker();
+          }, 300);
+        }
+      });
+    }
   }
 });
 

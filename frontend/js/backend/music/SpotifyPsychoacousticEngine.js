@@ -6,7 +6,7 @@
  */
 
 export class SpotifyPsychoacousticEngine {
-  static CLIENT_ID = '9a72d4c09d5743b19b6ef933c09f3e41'; // Client ID de Spotify por defecto
+  static CLIENT_ID = 'fa292c3f485d40a4ba4fa1d17e61dd96'; // Client ID oficial de Spotify
   static REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'http://localhost:8000/';
   static SCOPES = 'user-top-read user-read-recently-played user-read-playback-state';
 

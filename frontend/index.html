@@ -22,7 +22,7 @@
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=10.0" />
+  <link rel="stylesheet" href="css/style.css?v=11.0" />
 </head>
 
 <body>
@@ -817,12 +817,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=10.0"></script>
-  <script src="js/app.js?v=10.0"></script>
+  <script src="js/particles.js?v=11.0"></script>
+  <script src="js/app.js?v=11.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=10.0')
+        navigator.serviceWorker.register('./sw.js?v=11.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

@@ -1405,14 +1405,18 @@ class SpotifyPsychoacousticEngine {
       target_mode: 1
     };
 
-    // 1. Calibración por Fase Hormonal
+    // 1. Perfiles Psicoacústicos Basales por Fase Hormonal
     if (p.includes('menstrual') || p.includes('regla')) {
-      targets.target_energy = 0.25;
+      targets.target_energy = 0.22;
       targets.target_valence = 0.40;
       targets.target_tempo = 65;
       targets.target_acousticness = 0.80;
       targets.target_danceability = 0.35;
       targets.target_mode = 0; // Armonías menores reconfortantes
+      targets.max_energy = 0.38;
+      targets.max_tempo = 85;
+      targets.min_acousticness = 0.45;
+      targets.isCalmPhase = true;
     } else if (p.includes('folicular')) {
       targets.target_energy = 0.72;
       targets.target_valence = 0.80;
@@ -1420,6 +1424,8 @@ class SpotifyPsychoacousticEngine {
       targets.target_acousticness = 0.25;
       targets.target_danceability = 0.70;
       targets.target_mode = 1; // Modo mayor alegre
+      targets.min_energy = 0.45;
+      targets.isCalmPhase = false;
     } else if (p.includes('ovulatoria')) {
       targets.target_energy = 0.88;
       targets.target_valence = 0.88;
@@ -1427,6 +1433,9 @@ class SpotifyPsychoacousticEngine {
       targets.target_acousticness = 0.15;
       targets.target_danceability = 0.85;
       targets.target_mode = 1;
+      targets.min_energy = 0.65;
+      targets.min_valence = 0.60;
+      targets.isCalmPhase = false;
     } else if (p.includes('lutea') || p.includes('lútea') || p.includes('premenstrual')) {
       targets.target_energy = 0.35;
       targets.target_valence = 0.45;
@@ -1434,6 +1443,10 @@ class SpotifyPsychoacousticEngine {
       targets.target_acousticness = 0.60;
       targets.target_danceability = 0.40;
       targets.target_mode = 0;
+      targets.max_energy = 0.48;
+      targets.max_tempo = 95;
+      targets.min_acousticness = 0.35;
+      targets.isCalmPhase = true;
     }
 
     // 2. Moduladores por Síntomas Físicos y Emocionales Registrados
@@ -1445,17 +1458,28 @@ class SpotifyPsychoacousticEngine {
     if (hasCramps) {
       targets.target_energy = Math.max(0.18, targets.target_energy - 0.15);
       targets.target_tempo = Math.max(60, targets.target_tempo - 10);
-      targets.target_acousticness = Math.min(0.92, targets.target_acousticness + 0.20);
+      targets.target_acousticness = Math.min(0.95, targets.target_acousticness + 0.20);
+      targets.max_energy = 0.32;
+      targets.max_tempo = 78;
+      targets.min_acousticness = 0.55;
+      targets.isCalmPhase = true;
     } else if (hasFatigue) {
       targets.target_energy = Math.max(0.18, targets.target_energy - 0.18);
       targets.target_tempo = Math.max(58, targets.target_tempo - 12);
+      targets.max_energy = 0.35;
+      targets.max_tempo = 80;
+      targets.isCalmPhase = true;
     } else if (hasAnxiety) {
       targets.target_valence = Math.min(0.60, targets.target_valence + 0.10);
       targets.target_energy = 0.30;
+      targets.max_energy = 0.40;
+      targets.isCalmPhase = true;
     }
 
     if (hasHeadache) {
       targets.target_instrumentalness = 0.65; // Menor presencia vocal para evitar fatiga sensorial
+      targets.max_energy = 0.30;
+      targets.isCalmPhase = true;
     }
 
     return targets;
@@ -1505,6 +1529,8 @@ class SpotifyPsychoacousticEngine {
   static async getRecommendationForUser(phase = 'Ovulatoria', symptoms = []) {
     const token = this.getStoredToken();
     const acousticTargets = this.computeAcousticTargets(phase, symptoms);
+    const isCalmPhase = acousticTargets.isCalmPhase;
+    const excludedKeywords = ['metal', 'deathcore', 'screamo', 'hard rock', 'heavy metal', 'grindcore', 'punk', 'drill', 'hardcore', 'industrial', 'techno'];
 
     if (!token) {
       return {
@@ -1522,28 +1548,49 @@ class SpotifyPsychoacousticEngine {
       try {
         const storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
         if (storedArtists.length) {
-          seedArtists = storedArtists.slice(0, 5).map(a => a.id);
+          if (isCalmPhase) {
+            const calmArtists = storedArtists.filter(a => {
+              const genres = (a.genres || []).map(g => g.toLowerCase());
+              return !genres.some(g => excludedKeywords.some(ex => g.includes(ex)));
+            });
+            seedArtists = (calmArtists.length > 0 ? calmArtists : storedArtists).slice(0, 4).map(a => a.id);
+          } else {
+            seedArtists = storedArtists.slice(0, 4).map(a => a.id);
+          }
         }
       } catch (e) {}
 
       try {
         const storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
         if (storedTracks.length) {
-          seedTracks = storedTracks.slice(0, 5).map(t => t.id);
+          seedTracks = storedTracks.slice(0, 3).map(t => t.id);
         }
       } catch (e) {}
 
       let tracks = [];
 
-      // Intento 1: Spotify Recommendations API con semillas de sus artistas/tracks favoritos
+      // Intento 1: Spotify Recommendations API con semillas y límites acústicos estrictos
       let queryParams = new URLSearchParams({
-        limit: '15',
+        limit: '20',
         target_energy: acousticTargets.target_energy.toFixed(2),
         target_valence: acousticTargets.target_valence.toFixed(2),
         target_tempo: Math.round(acousticTargets.target_tempo).toString(),
         target_acousticness: acousticTargets.target_acousticness.toFixed(2),
         target_danceability: acousticTargets.target_danceability.toFixed(2)
       });
+
+      if (acousticTargets.max_energy !== undefined) {
+        queryParams.append('max_energy', acousticTargets.max_energy.toFixed(2));
+      }
+      if (acousticTargets.max_tempo !== undefined) {
+        queryParams.append('max_tempo', Math.round(acousticTargets.max_tempo).toString());
+      }
+      if (acousticTargets.min_acousticness !== undefined) {
+        queryParams.append('min_acousticness', acousticTargets.min_acousticness.toFixed(2));
+      }
+      if (acousticTargets.min_energy !== undefined) {
+        queryParams.append('min_energy', acousticTargets.min_energy.toFixed(2));
+      }
 
       if (seedArtists.length > 0) {
         queryParams.append('seed_artists', seedArtists.slice(0, 2).join(','));
@@ -1552,7 +1599,7 @@ class SpotifyPsychoacousticEngine {
         queryParams.append('seed_tracks', seedTracks.slice(0, 2).join(','));
       }
       if (!seedArtists.length && !seedTracks.length) {
-        queryParams.append('seed_genres', 'pop,latin,indie');
+        queryParams.append('seed_genres', isCalmPhase ? 'acoustic,indie,ambient' : 'pop,latin,indie');
       }
 
       try {
@@ -1565,33 +1612,49 @@ class SpotifyPsychoacousticEngine {
         }
       } catch (e) {}
 
-      // Fallback 1: Si no hay tracks de recommendations, usar canciones con Me Gusta o Top Tracks históricos
+      // Fallback 1: Si no hay tracks de recommendations, usar canciones con Me Gusta o Top Tracks históricos filtrados
       if (tracks.length === 0) {
         try {
           const liked = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
           const topTr = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
-          tracks = [...liked, ...topTr];
+          let combined = [...liked, ...topTr];
+          if (isCalmPhase && combined.length > 0) {
+            combined = combined.filter(t => {
+              const text = `${t.name} ${t.artists?.map(a => a.name).join(' ') || ''}`.toLowerCase();
+              return !excludedKeywords.some(ex => text.includes(ex));
+            });
+          }
+          tracks = combined;
         } catch (e) {}
       }
 
-      // Fallback 2: Consultar directamente las canciones más escuchadas de toda la vida
+      // Fallback 2: Consultar directamente canciones favoritas de toda la vida
       if (tracks.length === 0) {
         try {
-          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=long_term', {
+          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=25&time_range=long_term', {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (topTracksRes.ok) {
             const topData = await topTracksRes.json();
-            tracks = topData.items || [];
+            let items = topData.items || [];
+            if (isCalmPhase && items.length > 0) {
+              items = items.filter(t => {
+                const text = `${t.name} ${t.artists?.map(a => a.name).join(' ') || ''}`.toLowerCase();
+                return !excludedKeywords.some(ex => text.includes(ex));
+              });
+            }
+            tracks = items;
           }
         } catch (e) {}
       }
 
       // Fallback 3: Búsqueda temática según la fase
       if (tracks.length === 0) {
-        const searchKeyword = phase.toLowerCase().includes('menstrual') ? 'Acoustic relaxation' : (phase.toLowerCase().includes('lutea') ? 'Chill lofi' : 'Pop energy');
+        const searchKeyword = isCalmPhase
+          ? 'Acoustic calm gentle soft piano'
+          : (phase.toLowerCase().includes('folicular') ? 'Indie pop upbeat' : 'Dance pop upbeat rhythm');
         try {
-          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=10`, {
+          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=15`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (searchRes.ok) {
@@ -5498,9 +5561,9 @@ document.addEventListener('DOMContentLoaded', () => {
       cardContainer.innerHTML = `
         <div class="spotify-recommendation-card ${animClass}">
           <div class="spotify-card-header">
-            <div style="display:flex; align-items:center; gap:0.45rem;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
-              <span class="spotify-card-title">Sintonía Musical de ${pet.name}</span>
+            <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+              <span class="spotify-card-title">Sintonía de ${pet.name}</span>
             </div>
             <span class="spotify-vibe-pill">Personalizada 🎧</span>
           </div>
@@ -5520,9 +5583,9 @@ document.addEventListener('DOMContentLoaded', () => {
       cardContainer.innerHTML = `
         <div class="spotify-recommendation-card spotify-connected ${animClass}">
           <div class="spotify-card-header">
-            <div style="display:flex; align-items:center; gap:0.45rem;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
-              <span class="spotify-card-title">Recomendación Musical de ${pet.name}</span>
+            <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+              <span class="spotify-card-title">Sintonía de ${pet.name}</span>
             </div>
             <span class="spotify-vibe-pill">${recResult.acousticTargets.target_tempo} BPM • ${displayPhase}</span>
           </div>
@@ -8998,9 +9061,15 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.clearLocalAppCache = function() {
-    if (confirm('¿Estás segura de restablecer la caché local de la aplicación?')) {
+    if (confirm('¿Deseas restablecer todos los datos locales y empezar la experiencia desde cero? Esto reiniciará el Onboarding inicial y limpiará el almacenamiento.')) {
       localStorage.clear();
-      alert('Caché restablecida con éxito.');
+      sessionStorage.clear();
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          for (let name of names) caches.delete(name);
+        });
+      }
+      alert('Datos restablecidos con éxito. Reiniciando...');
       location.reload();
     }
   };

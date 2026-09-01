@@ -212,14 +212,18 @@ export class SpotifyPsychoacousticEngine {
       target_mode: 1
     };
 
-    // 1. Calibración por Fase Hormonal
+    // 1. Perfiles Psicoacústicos Basales por Fase Hormonal
     if (p.includes('menstrual') || p.includes('regla')) {
-      targets.target_energy = 0.25;
+      targets.target_energy = 0.22;
       targets.target_valence = 0.40;
       targets.target_tempo = 65;
       targets.target_acousticness = 0.80;
       targets.target_danceability = 0.35;
       targets.target_mode = 0; // Armonías menores reconfortantes
+      targets.max_energy = 0.38;
+      targets.max_tempo = 85;
+      targets.min_acousticness = 0.45;
+      targets.isCalmPhase = true;
     } else if (p.includes('folicular')) {
       targets.target_energy = 0.72;
       targets.target_valence = 0.80;
@@ -227,6 +231,8 @@ export class SpotifyPsychoacousticEngine {
       targets.target_acousticness = 0.25;
       targets.target_danceability = 0.70;
       targets.target_mode = 1; // Modo mayor alegre
+      targets.min_energy = 0.45;
+      targets.isCalmPhase = false;
     } else if (p.includes('ovulatoria')) {
       targets.target_energy = 0.88;
       targets.target_valence = 0.88;
@@ -234,6 +240,9 @@ export class SpotifyPsychoacousticEngine {
       targets.target_acousticness = 0.15;
       targets.target_danceability = 0.85;
       targets.target_mode = 1;
+      targets.min_energy = 0.65;
+      targets.min_valence = 0.60;
+      targets.isCalmPhase = false;
     } else if (p.includes('lutea') || p.includes('lútea') || p.includes('premenstrual')) {
       targets.target_energy = 0.35;
       targets.target_valence = 0.45;
@@ -241,6 +250,10 @@ export class SpotifyPsychoacousticEngine {
       targets.target_acousticness = 0.60;
       targets.target_danceability = 0.40;
       targets.target_mode = 0;
+      targets.max_energy = 0.48;
+      targets.max_tempo = 95;
+      targets.min_acousticness = 0.35;
+      targets.isCalmPhase = true;
     }
 
     // 2. Moduladores por Síntomas Físicos y Emocionales Registrados
@@ -253,16 +266,27 @@ export class SpotifyPsychoacousticEngine {
       targets.target_energy = Math.max(0.18, targets.target_energy - 0.15);
       targets.target_tempo = Math.max(60, targets.target_tempo - 10);
       targets.target_acousticness = Math.min(0.92, targets.target_acousticness + 0.20);
+      targets.max_energy = 0.32;
+      targets.max_tempo = 78;
+      targets.min_acousticness = 0.55;
+      targets.isCalmPhase = true;
     } else if (hasFatigue) {
       targets.target_energy = Math.max(0.18, targets.target_energy - 0.18);
       targets.target_tempo = Math.max(58, targets.target_tempo - 12);
+      targets.max_energy = 0.35;
+      targets.max_tempo = 80;
+      targets.isCalmPhase = true;
     } else if (hasAnxiety) {
       targets.target_valence = Math.min(0.60, targets.target_valence + 0.10);
       targets.target_energy = 0.30;
+      targets.max_energy = 0.40;
+      targets.isCalmPhase = true;
     }
 
     if (hasHeadache) {
       targets.target_instrumentalness = 0.65; // Menor presencia vocal para evitar fatiga sensorial
+      targets.max_energy = 0.30;
+      targets.isCalmPhase = true;
     }
 
     return targets;
@@ -312,6 +336,8 @@ export class SpotifyPsychoacousticEngine {
   static async getRecommendationForUser(phase = 'Ovulatoria', symptoms = []) {
     const token = this.getStoredToken();
     const acousticTargets = this.computeAcousticTargets(phase, symptoms);
+    const isCalmPhase = acousticTargets.isCalmPhase;
+    const excludedKeywords = ['metal', 'deathcore', 'screamo', 'hard rock', 'heavy metal', 'grindcore', 'punk', 'drill', 'hardcore', 'industrial', 'techno'];
 
     if (!token) {
       return {
@@ -329,28 +355,49 @@ export class SpotifyPsychoacousticEngine {
       try {
         const storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
         if (storedArtists.length) {
-          seedArtists = storedArtists.slice(0, 5).map(a => a.id);
+          if (isCalmPhase) {
+            const calmArtists = storedArtists.filter(a => {
+              const genres = (a.genres || []).map(g => g.toLowerCase());
+              return !genres.some(g => excludedKeywords.some(ex => g.includes(ex)));
+            });
+            seedArtists = (calmArtists.length > 0 ? calmArtists : storedArtists).slice(0, 4).map(a => a.id);
+          } else {
+            seedArtists = storedArtists.slice(0, 4).map(a => a.id);
+          }
         }
       } catch (e) {}
 
       try {
         const storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
         if (storedTracks.length) {
-          seedTracks = storedTracks.slice(0, 5).map(t => t.id);
+          seedTracks = storedTracks.slice(0, 3).map(t => t.id);
         }
       } catch (e) {}
 
       let tracks = [];
 
-      // Intento 1: Spotify Recommendations API con semillas de sus artistas/tracks favoritos
+      // Intento 1: Spotify Recommendations API con semillas y límites acústicos estrictos
       let queryParams = new URLSearchParams({
-        limit: '15',
+        limit: '20',
         target_energy: acousticTargets.target_energy.toFixed(2),
         target_valence: acousticTargets.target_valence.toFixed(2),
         target_tempo: Math.round(acousticTargets.target_tempo).toString(),
         target_acousticness: acousticTargets.target_acousticness.toFixed(2),
         target_danceability: acousticTargets.target_danceability.toFixed(2)
       });
+
+      if (acousticTargets.max_energy !== undefined) {
+        queryParams.append('max_energy', acousticTargets.max_energy.toFixed(2));
+      }
+      if (acousticTargets.max_tempo !== undefined) {
+        queryParams.append('max_tempo', Math.round(acousticTargets.max_tempo).toString());
+      }
+      if (acousticTargets.min_acousticness !== undefined) {
+        queryParams.append('min_acousticness', acousticTargets.min_acousticness.toFixed(2));
+      }
+      if (acousticTargets.min_energy !== undefined) {
+        queryParams.append('min_energy', acousticTargets.min_energy.toFixed(2));
+      }
 
       if (seedArtists.length > 0) {
         queryParams.append('seed_artists', seedArtists.slice(0, 2).join(','));
@@ -359,7 +406,7 @@ export class SpotifyPsychoacousticEngine {
         queryParams.append('seed_tracks', seedTracks.slice(0, 2).join(','));
       }
       if (!seedArtists.length && !seedTracks.length) {
-        queryParams.append('seed_genres', 'pop,latin,indie');
+        queryParams.append('seed_genres', isCalmPhase ? 'acoustic,indie,ambient' : 'pop,latin,indie');
       }
 
       try {
@@ -377,28 +424,44 @@ export class SpotifyPsychoacousticEngine {
         try {
           const liked = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
           const topTr = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
-          tracks = [...liked, ...topTr];
+          let combined = [...liked, ...topTr];
+          if (isCalmPhase && combined.length > 0) {
+            combined = combined.filter(t => {
+              const text = `${t.name} ${t.artists?.map(a => a.name).join(' ') || ''}`.toLowerCase();
+              return !excludedKeywords.some(ex => text.includes(ex));
+            });
+          }
+          tracks = combined;
         } catch (e) {}
       }
 
       // Fallback 2: Consultar directamente las canciones más escuchadas de toda la vida
       if (tracks.length === 0) {
         try {
-          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=long_term', {
+          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=25&time_range=long_term', {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (topTracksRes.ok) {
             const topData = await topTracksRes.json();
-            tracks = topData.items || [];
+            let items = topData.items || [];
+            if (isCalmPhase && items.length > 0) {
+              items = items.filter(t => {
+                const text = `${t.name} ${t.artists?.map(a => a.name).join(' ') || ''}`.toLowerCase();
+                return !excludedKeywords.some(ex => text.includes(ex));
+              });
+            }
+            tracks = items;
           }
         } catch (e) {}
       }
 
       // Fallback 3: Búsqueda temática según la fase
       if (tracks.length === 0) {
-        const searchKeyword = phase.toLowerCase().includes('menstrual') ? 'Acoustic relaxation' : (phase.toLowerCase().includes('lutea') ? 'Chill lofi' : 'Pop energy');
+        const searchKeyword = isCalmPhase
+          ? 'Acoustic calm gentle soft piano'
+          : (phase.toLowerCase().includes('folicular') ? 'Indie pop upbeat' : 'Dance pop upbeat rhythm');
         try {
-          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=10`, {
+          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=15`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (searchRes.ok) {

@@ -16,7 +16,7 @@
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=6.0" />
+  <link rel="stylesheet" href="css/style.css?v=7.0" />
 </head>
 
 <body>
@@ -27,10 +27,6 @@
   <!-- Main iPhone Mockup Device Frame Container -->
   <div class="iphone-wrapper">
     <div class="iphone-device">
-
-      <!-- iPhone Dynamic Island Notch & Home Indicator -->
-      <div class="dynamic-island"></div>
-      <div class="home-indicator"></div>
 
       <!-- Contenedor Flotante de Notificación In-App de Logros -->
       <div id="achievement-toast-container"></div>
@@ -503,15 +499,6 @@
 
         <!-- Top Header -->
         <header class="iphone-header">
-          <div class="status-bar-row">
-            <span>9:41</span>
-            <div style="display: flex; gap: 0.35rem; align-items: center;">
-              <span class="material-symbols-outlined" style="font-size: 1rem;">signal_cellular_4_bar</span>
-              <span class="material-symbols-outlined" style="font-size: 1rem;">wifi</span>
-              <span class="material-symbols-outlined" style="font-size: 1.1rem;">battery_full</span>
-            </div>
-          </div>
-
           <div class="main-title-container">
             <h1 class="app-main-title">Pochirocho</h1>
             <div class="title-floral-garland">
@@ -526,11 +513,11 @@
           <div class="widgets-row">
             <div class="widget-pill streak-pill" title="Racha de Salud Activa">
               <span class="icon">🔥</span>
-              <span id="home-streak-val">5 Días</span>
+              <span id="home-streak-val">0 Días</span>
             </div>
             <div class="widget-pill points-pill" title="Pochipesos Acumulados">
               <span class="icon">🪙</span>
-              <span id="home-points-val">350</span>
+              <span id="home-points-val">0</span>
             </div>
           </div>
         </header>
@@ -824,12 +811,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=6.0"></script>
-  <script src="js/app.js?v=6.0"></script>
+  <script src="js/particles.js?v=7.0"></script>
+  <script src="js/app.js?v=7.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=6.0')
+        navigator.serviceWorker.register('./sw.js?v=7.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

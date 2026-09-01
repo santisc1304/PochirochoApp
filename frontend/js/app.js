@@ -9307,16 +9307,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // LOGICA DE LA PANTALLA DE CONFIGURACIÓN & AJUSTES
   // =========================================================================
   function openSettingsModal() {
-    let modal = document.getElementById('settings-modal-overlay');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'settings-modal-overlay';
-      modal.className = 'modal-overlay active';
-      modal.style.cssText = 'display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,4,10,0.88); backdrop-filter:blur(10px); z-index:99999; padding:1rem;';
-      document.body.appendChild(modal);
-    }
+    try {
+      let modal = document.getElementById('settings-modal-overlay');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'settings-modal-overlay';
+        modal.className = 'modal-overlay active';
+        modal.style.cssText = 'display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,4,10,0.88); backdrop-filter:blur(10px); z-index:99999; padding:1rem;';
+        modal.onclick = function(e) {
+          if (e.target === modal) closeSettingsModal();
+        };
+        document.body.appendChild(modal);
+      }
 
-    const currentPet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
+      currentAvatarId = localStorage.getItem('pochirocho_selected_avatar') || currentAvatarId || 'amy';
+      const currentPet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
     const isSpotifyConn = SpotifyPsychoacousticEngine.isConnected();
     const hasGeminiKey = GeminiConfig.hasApiKey();
     const currentGeminiKey = GeminiConfig.getApiKey();
@@ -9573,7 +9578,11 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
-    modal.style.display = 'flex';
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+    } catch (err) {
+      console.warn('openSettingsModal error:', err);
+    }
   };
   window.openSettingsModal = openSettingsModal;
 
@@ -9704,36 +9713,60 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.closeSettingsModal = function() {
-    const modal = document.getElementById('settings-modal-overlay');
-    if (modal) {
-      modal.classList.remove('active');
-      modal.style.display = 'none';
-    }
+    try {
+      const modal = document.getElementById('settings-modal-overlay');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
 
-    // Guardar y sincronizar todas las preferencias al cerrar
-    saveThemeSettings();
-    const activeTheme = getThemeForCurrentState();
-    applyTheme(activeTheme);
-    updateAvatarDisplay(null);
+      // Guardar y sincronizar todas las preferencias al cerrar
+      saveThemeSettings();
+      if (currentAvatarId) {
+        try {
+          localStorage.setItem('pochirocho_selected_avatar', currentAvatarId);
+          userProfile.mascotaSeleccionada = currentAvatarId;
+          localStorage.setItem('pochirocho_user_profile', JSON.stringify(userProfile));
+        } catch(e) {}
+      }
 
-    // Sincronizar subvista activa del tracker
-    const activeWheel = document.querySelector('.wheel-nav-item.active');
-    const activeTab = activeWheel ? activeWheel.getAttribute('data-tab') : '';
-    if (activeTab === 'calendar') {
-      renderCalendarView();
-    } else if (activeTab === 'ai') {
-      renderAIAgentView();
-    } else if (activeTab === 'relief') {
-      renderReliefCenterView();
-    }
+      const activeTheme = getThemeForCurrentState();
+      applyTheme(activeTheme);
+      updateAvatarDisplay(null);
 
-    if (typeof renderSpotifyDashboardCard === 'function') {
-      renderSpotifyDashboardCard();
+      // Sincronizar subvista activa del tracker de forma segura
+      const activeWheel = document.querySelector('.wheel-nav-item.active');
+      const activeTab = activeWheel ? activeWheel.getAttribute('data-tab') : '';
+      if (activeTab === 'calendar' && typeof renderCalendarView === 'function') {
+        renderCalendarView();
+      } else if (activeTab === 'ai' && typeof renderAIAgentView === 'function') {
+        renderAIAgentView();
+      } else if (activeTab === 'relief' && typeof renderReliefCenterView === 'function') {
+        renderReliefCenterView();
+      }
+
+      if (typeof renderSpotifyDashboardCard === 'function') {
+        renderSpotifyDashboardCard();
+      }
+    } catch (err) {
+      console.warn('closeSettingsModal caught error:', err);
+    } finally {
+      const modal = document.getElementById('settings-modal-overlay');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
     }
   };
 
   window.setSettingsAvatar = function(avatarId) {
     currentAvatarId = avatarId;
+    try {
+      localStorage.setItem('pochirocho_selected_avatar', avatarId);
+      userProfile.mascotaSeleccionada = avatarId;
+      localStorage.setItem('pochirocho_user_profile', JSON.stringify(userProfile));
+    } catch(e) {}
+
     const btns = document.querySelectorAll('.settings-avatar-btn');
     btns.forEach(b => {
       if (b.getAttribute('data-avatar') === avatarId) b.classList.add('active');
@@ -9746,6 +9779,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.setSettingsThemeMode = function(mode) {
     themeSettings.mode = mode;
+    saveThemeSettings();
+
     const modeBtns = document.querySelectorAll('.settings-mode-tab-btn');
     modeBtns.forEach(b => {
       if (b.getAttribute('data-mode') === mode) b.classList.add('active');
@@ -9766,6 +9801,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.setSettingsPhaseTheme = function(phaseKey, colorKey) {
     themeSettings.phaseThemes[phaseKey] = colorKey;
+    saveThemeSettings();
+
     const phaseCard = document.querySelector(`.settings-phase-item-card[data-phase="${phaseKey}"]`);
     if (phaseCard) {
       const dotBtns = phaseCard.querySelectorAll('.phase-color-dot-btn');
@@ -9783,6 +9820,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.setSettingsFixedTheme = function(colorKey) {
     themeSettings.fixedTheme = colorKey;
+    saveThemeSettings();
+
     const cards = document.querySelectorAll('.settings-theme-card');
     cards.forEach(c => {
       if (c.getAttribute('data-theme') === colorKey) c.classList.add('active');
@@ -9793,6 +9832,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.simulatePhaseFromSettings = function(phaseKey) {
     userCycleState.currentPhase = phaseKey;
     userCycleState.currentDay = (userCycleState.phaseDetails[phaseKey] && userCycleState.phaseDetails[phaseKey].defaultDay) || 14;
+    userProfile.faseActual = phaseKey;
+    try {
+      localStorage.setItem('pochirocho_user_profile', JSON.stringify(userProfile));
+    } catch(e) {}
+    saveThemeSettings();
 
     const simBtns = document.querySelectorAll('.settings-phase-simulate-btn');
     simBtns.forEach(b => {

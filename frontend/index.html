@@ -22,7 +22,7 @@
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=13.0" />
+  <link rel="stylesheet" href="css/style.css?v=14.0" />
 </head>
 
 <body>
@@ -621,7 +621,7 @@
             <span>Inicio App</span>
           </button>
           <span class="tracker-page-title">Salud Hormonal</span>
-          <button class="tracker-settings-btn" id="btn-open-settings" title="Ajustes y Configuración">
+          <button class="tracker-settings-btn" id="btn-open-settings" onclick="openSettingsModal()" title="Ajustes y Configuración">
             <span class="material-symbols-outlined" style="font-size: 1.2rem;">settings</span>
           </button>
         </header>
@@ -817,12 +817,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=13.0"></script>
-  <script src="js/app.js?v=13.0"></script>
+  <script src="js/particles.js?v=14.0"></script>
+  <script src="js/app.js?v=14.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=13.0')
+        navigator.serviceWorker.register('./sw.js?v=14.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

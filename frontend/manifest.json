@@ -10,13 +10,13 @@
   "theme_color": "#02040a",
   "icons": [
     {
-      "src": "assets/avatares/Amy/Feliz_Amy.png",
+      "src": "assets/marcianito_secret_asset.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/avatares/Amy/Normal_Amy.png",
+      "src": "assets/marcianito_secret_asset.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

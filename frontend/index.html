@@ -12,11 +12,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Pochirocho" />
-  <link rel="apple-touch-icon" href="assets/avatares/Amy/Feliz_Amy.png" />
+  <link rel="icon" type="image/png" href="assets/marcianito_secret_asset.png" />
+  <link rel="apple-touch-icon" href="assets/marcianito_secret_asset.png" />
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=7.0" />
+  <link rel="stylesheet" href="css/style.css?v=8.0" />
 </head>
 
 <body>
@@ -811,12 +812,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=7.0"></script>
-  <script src="js/app.js?v=7.0"></script>
+  <script src="js/particles.js?v=8.0"></script>
+  <script src="js/app.js?v=8.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=7.0')
+        navigator.serviceWorker.register('./sw.js?v=8.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

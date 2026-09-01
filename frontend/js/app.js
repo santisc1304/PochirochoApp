@@ -4179,28 +4179,53 @@ document.addEventListener('DOMContentLoaded', () => {
   // INSTANCIA DEL MOTOR AVANZADO DE 15 LOGROS
   const achievementsEngine = new AchievementsEngine();
 
-  // SISTEMA DE NOTIFICACIONES IN-APP DE LOGROS DESBLOQUEADOS
-  function showInAppAchievementToast(ach) {
-    if (!ach) return;
+  // SISTEMA UNIFICADO DE NOTIFICACIONES IN-APP (TOASTS FLOTANTES)
+  function showInAppToast({
+    title = '',
+    message = '',
+    icon = '✨',
+    badgeText = 'Notificación',
+    badgeIcon = 'notifications',
+    btnText = null,
+    onBtnClick = null,
+    duration = 4500,
+    accentColor = 'var(--gold-accent)'
+  }) {
     const container = document.getElementById('achievement-toast-container');
     if (!container) return;
 
     const toast = document.createElement('div');
     toast.className = 'achievement-toast';
+    toast.style.borderColor = accentColor;
+    
+    let btnHtml = '';
+    if (btnText) {
+      btnHtml = `<button class="achievement-toast-btn" style="background:linear-gradient(135deg, ${accentColor}, #f59e0b);">${btnText}</button>`;
+    }
+
     toast.innerHTML = `
-      <div class="achievement-toast-icon">${ach.icon}</div>
+      <div class="achievement-toast-icon">${icon}</div>
       <div class="achievement-toast-content">
-        <div class="achievement-toast-header">
-          <span class="material-symbols-outlined" style="font-size:0.9rem; color:var(--gold-accent);">military_tech</span>
-          <span>¡Nuevo Logro Desbloqueado!</span>
+        <div class="achievement-toast-header" style="color:${accentColor};">
+          <span class="material-symbols-outlined" style="font-size:0.9rem; color:${accentColor};">${badgeIcon}</span>
+          <span>${badgeText}</span>
         </div>
-        <div class="achievement-toast-title">${ach.title}</div>
-        <div class="achievement-toast-sub">${ach.desc}</div>
+        <div class="achievement-toast-title">${title}</div>
+        <div class="achievement-toast-sub">${message}</div>
       </div>
-      <button class="achievement-toast-btn" onclick="navigateToAchievements(); this.closest('.achievement-toast').remove();">
-        Reclamar +45 🪙
-      </button>
+      ${btnHtml}
     `;
+
+    if (btnText && onBtnClick) {
+      const btn = toast.querySelector('.achievement-toast-btn');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onBtnClick();
+          toast.remove();
+        });
+      }
+    }
 
     container.appendChild(toast);
 
@@ -4210,9 +4235,51 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.style.transform = 'translateY(-15px) scale(0.9)';
         setTimeout(() => toast.remove(), 350);
       }
-    }, 6500);
+    }, duration);
+  }
+  window.showInAppToast = showInAppToast;
+
+  function showInAppAchievementToast(ach) {
+    if (!ach) return;
+    showInAppToast({
+      title: ach.title,
+      message: ach.desc,
+      icon: ach.icon || '🏆',
+      badgeText: '¡Nuevo Logro Desbloqueado!',
+      badgeIcon: 'military_tech',
+      btnText: 'Reclamar +45 🪙',
+      onBtnClick: () => navigateToAchievements(),
+      duration: 6500,
+      accentColor: 'var(--gold-accent)'
+    });
   }
   window.showInAppAchievementToast = showInAppAchievementToast;
+
+  function showInAppRewardToast(coins, reason, icon = '🪙') {
+    showInAppToast({
+      title: `+${coins} Pochipesos Ganados`,
+      message: reason,
+      icon: icon,
+      badgeText: '¡Recompensa Obtenida!',
+      badgeIcon: 'monetization_on',
+      duration: 4000,
+      accentColor: '#ffd166'
+    });
+  }
+  window.showInAppRewardToast = showInAppRewardToast;
+
+  function showInAppInfoToast(title, message, icon = '✨') {
+    showInAppToast({
+      title: title,
+      message: message,
+      icon: icon,
+      badgeText: 'Información',
+      badgeIcon: 'info',
+      duration: 3800,
+      accentColor: '#38bdf8'
+    });
+  }
+  window.showInAppInfoToast = showInAppInfoToast;
 
   function updateCoinsUI() {
     userCoins = rewardsEngine.coins;
@@ -5876,9 +5943,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showInAppAchievementToast(achRes.ach);
       }
 
-      alert('🎉 ¡Felicidades! Has completado todas las tareas diarias de hoy.\nRecibiste tu bono de +20 Pochipesos 🪙✨');
+      showInAppRewardToast(20, '¡Has completado todas las tareas de hoy! Bono de +20 Pochipesos 🪙✨', '🎁');
     } else {
-      alert(res.reason);
+      showInAppInfoToast('Tareas Diarias', res.reason || 'Aún tienes tareas pendientes por completar hoy.');
     }
   };
 
@@ -6013,7 +6080,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.insertAdjacentHTML('beforeend', claimModalHTML);
       }
     } else {
-      alert(`⚠️ Pochipesos insuficientes. Necesitas 🪙 ${prod.price} Pochipesos (Tienes 🪙 ${rewardsEngine.coins}). ¡Completa tus tareas diarias y rutinas para acumular más!`);
+      showInAppToast({
+        title: 'Pochipesos Insuficientes',
+        message: `Necesitas 🪙 ${prod.price} (Tienes 🪙 ${rewardsEngine.coins}). ¡Completa tus tareas diarias y rutinas para acumular más!`,
+        icon: '🪙',
+        badgeText: 'Tienda Pochirocho',
+        badgeIcon: 'storefront',
+        accentColor: '#ff758f'
+      });
     }
   };
 
@@ -6023,23 +6097,49 @@ document.addEventListener('DOMContentLoaded', () => {
   window.triggerSecretMarcianitoEgg = function() {
     const achRes = achievementsEngine.unlockDirect('ach-secret-motivation-egg');
     
-    // Animación visual de destellos en pantalla
-    const imgEgg = document.querySelector('.secret-marcianito-egg');
-    if (imgEgg) {
-      imgEgg.style.transform = 'scale(2.2) rotate(360deg)';
-      imgEgg.style.opacity = '1';
-      setTimeout(() => {
-        imgEgg.style.transform = 'scale(1) rotate(0deg)';
-        imgEgg.style.opacity = '0.4';
-      }, 700);
+    // Crear o recuperar overlay del Marcianito
+    let overlay = document.getElementById('marcianito-modal-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'marcianito-modal-overlay';
+      overlay.className = 'marcianito-fullscreen-overlay';
+      document.body.appendChild(overlay);
     }
 
-    if (achRes.newlyUnlocked) {
+    const isFirstTime = achRes.newlyUnlocked;
+
+    overlay.innerHTML = `
+      <div class="marcianito-giant-card">
+        <img src="assets/marcianito_secret_asset.png" class="marcianito-giant-img" alt="Marcianito Místico" />
+        <div class="marcianito-speech-card">
+          <div class="marcianito-speech-title">
+            ${isFirstTime ? '🛸 ¡Marcianito Místico Revelado! ✨' : '🛸 ¡Pip-pop! Saludos Terrícola 👽💚'}
+          </div>
+          <div class="marcianito-speech-body">
+            ${isFirstTime 
+              ? '¡Has descubierto mi escondite en las notas del corazón! Has desbloqueado el logro secreto <strong>El Marcianito Místico</strong>. ¡Reclama tus <strong>+45 Pochipesos</strong> en Mis Logros!' 
+              : '¡Me alegra verte de nuevo por aquí! Sigue cuidando tu salud, escuchando tu cuerpo y floreciendo cada día 🌸✨'}
+          </div>
+          <div class="marcianito-tap-hint">
+            <span class="material-symbols-outlined" style="font-size:0.9rem;">touch_app</span>
+            <span>Toca en cualquier parte para cerrar</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    overlay.classList.add('active');
+
+    if (isFirstTime) {
       showInAppAchievementToast(achRes.ach);
-      alert('🛸✨ ¡Has descubierto el secreto del Marcianito Místico en la Motivación!\nLogro secreto desbloqueado. ¡Reclama tus +45 Pochipesos en Mis Logros!');
-    } else {
-      alert('🛸 "¡Pip-pop! Saludos terrícola, ya descubriste este secreto, sigue floreciendo 🌸✨"');
     }
+
+    // Cerrar al tocar en cualquier parte de la pantalla
+    const closeOverlay = () => {
+      overlay.classList.remove('active');
+      overlay.removeEventListener('click', closeOverlay);
+    };
+    overlay.addEventListener('click', closeOverlay);
   };
 
   // ==========================================================================
@@ -6152,9 +6252,9 @@ document.addEventListener('DOMContentLoaded', () => {
       rewardsEngine.coins += res.rewardCoins;
       updateCoinsUI();
       renderAchievementsNodeView();
-      alert(`⭐ ¡Felicidades! Has reclamado +${res.rewardCoins} Pochipesos por el logro "${res.ach.title}". 🪙🎉`);
+      showInAppRewardToast(res.rewardCoins, `¡Reclamaste +${res.rewardCoins} 🪙 por "${res.ach.title}"!`, '🏆');
     } else {
-      alert(res.reason || 'No fue posible reclamar el logro');
+      showInAppInfoToast('Logros', res.reason || 'No fue posible reclamar el logro');
     }
   };
   // ==========================================================================
@@ -6738,7 +6838,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <p style="font-size: 0.72rem; color: #cbd5e1;">Consolidado de ciclos, dolor y síntomas listo para llevar a tu consulta ginecológica.</p>
             </div>
           </div>
-          <button class="btn-export-pdf" onclick="alert('📄 Reporte Clínico en PDF generado con éxito por Príncipe Pío 🐔👓. Descargando resumen consolidado para Ginecología...');">
+          <button class="btn-export-pdf" onclick="showInAppInfoToast('Reporte Clínico', '📄 Reporte Clínico en PDF generado con éxito por Príncipe Pío 🐔👓. Descargando resumen consolidado para Ginecología...', '📋');">
             <span class="material-symbols-outlined" style="font-size: 1.1rem;">download</span>Exportar Reporte Médico en PDF
           </button>
         </div>
@@ -8741,7 +8841,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </label>
             <div style="display:flex; gap:0.4rem;">
               <input type="text" id="setting-spotify-client-id" value="${localStorage.getItem('pochirocho_spotify_client_id') || SpotifyPsychoacousticEngine.CLIENT_ID}" placeholder="Client ID de Spotify..." style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:white; font-size:0.72rem; font-family:monospace;" />
-              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_client_id', document.getElementById('setting-spotify-client-id').value.trim()); alert('Client ID de Spotify guardado exitosamente.');">Guardar</button>
+              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_client_id', document.getElementById('setting-spotify-client-id').value.trim()); showInAppInfoToast('Spotify', 'Client ID guardado exitosamente.', '✓');">Guardar</button>
             </div>
 
             <label style="font-size: 0.7rem; color: #a7f3d0; display: block; font-weight: 700; margin-top:0.25rem;">
@@ -8749,8 +8849,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </label>
             <div style="display:flex; gap:0.4rem;">
               <input type="text" id="setting-spotify-redirect-uri" value="${SpotifyPsychoacousticEngine.getRedirectUri()}" style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#38bdf8; font-size:0.72rem; font-family:monospace;" />
-              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_custom_redirect', document.getElementById('setting-spotify-redirect-uri').value.trim()); alert('Redirect URI personalizada guardada.');">Guardar</button>
-              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0; background:rgba(255,255,255,0.1);" onclick="navigator.clipboard.writeText(document.getElementById('setting-spotify-redirect-uri').value); alert('¡Redirect URI copiada al portapapeles!');">Copiar</button>
+              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_custom_redirect', document.getElementById('setting-spotify-redirect-uri').value.trim()); showInAppInfoToast('Spotify', 'Redirect URI personalizada guardada.', '✓');">Guardar</button>
+              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0; background:rgba(255,255,255,0.1);" onclick="navigator.clipboard.writeText(document.getElementById('setting-spotify-redirect-uri').value); showInAppInfoToast('Spotify', '¡Redirect URI copiada al portapapeles!', '📋');">Copiar</button>
             </div>
             <span style="font-size: 0.63rem; color: #94a3b8; display: block; line-height: 1.3;">
               Asegúrate de pegar exactamente esta URL en tu <strong>Spotify Developer Dashboard > Settings > Redirect URIs</strong>.
@@ -9076,7 +9176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.triggerDeveloperSupportTicket = function() {
     const ticket = aiEngine.routeTicket('Reporte manual desde la pantalla de configuración', 'ana@ejemplo.com', { currentPet: currentAvatarId, timestamp: new Date().toISOString() });
-    alert(`🐔 Pollo Desarrollador Notificado:\nSe ha generado el ticket de soporte #${ticket.id.slice(-6)} para santiago.desarrollador@pochirocho.app`);
+    showInAppInfoToast('Pollo Desarrollador 🐔💻', `Ticket #${ticket.id.slice(-6)} generado y notificado a soporte técnico.`, '📩');
   };
 
   // Bind All Settings Buttons in top bars

@@ -26,7 +26,7 @@ export class UserProfileModel {
     this.objetivoSalud = data.objetivoSalud || 'Bienestar General';
     this.healthKitConectado = data.healthKitConectado || false;
     this.biometriaHabilitada = data.biometriaHabilitada || false;
-    this.desarrolladorEmail = data.desarrolladorEmail || 'santiago.desarrollador@pochirocho.app';
+    this.desarrolladorEmail = data.desarrolladorEmail || 'santisc1304@gmail.com';
   }
 
   toJSON() {

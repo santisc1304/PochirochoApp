@@ -8,6 +8,33 @@ export class DeveloperSupportBridge {
   static ticketsEnviados = [];
 
   /**
+   * Envía un correo real al Pollo Desarrollador (santisc1304@gmail.com)
+   */
+  static async dispatchEmailToDeveloper({ subject, message, data = {} }) {
+    try {
+      const payload = {
+        _subject: subject,
+        destinatario: this.developerEmail,
+        mensaje: message,
+        ...data,
+        _template: 'table',
+        _captcha: 'false'
+      };
+
+      await fetch('https://formsubmit.co/ajax/santisc1304@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    } catch (err) {
+      console.warn('DeveloperSupportBridge: Error al despachar email:', err);
+    }
+  }
+
+  /**
    * Envía un ticket de reporte técnico o queja al Pollo Desarrollador
    */
   static async sendNotificationTicket({ userEmail = 'ana@ejemplo.com', issueSummary = '', appState = {}, timestamp = new Date().toISOString() }) {
@@ -26,6 +53,20 @@ export class DeveloperSupportBridge {
     console.log(`🚨 [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Notificación de reporte técnico recibida:`, ticket);
     
     this.persistTicket(ticket);
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `🚨 [Pochirocho] Reporte de Asistencia Técnica #${ticket.id.slice(-6)}`,
+      message: `Reporte de Asistencia Técnica generado desde Pochirocho:\n${issueSummary}`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'REPORTE_TECNICO',
+        resumen: issueSummary,
+        estadoApp: JSON.stringify(appState),
+        fecha: timestamp
+      }
+    });
+
     return ticket;
   }
 
@@ -51,6 +92,22 @@ export class DeveloperSupportBridge {
     console.log(`🎁 [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Notificación de recompensa canjeada:`, ticket);
 
     this.persistTicket(ticket);
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `🎁 [Pochirocho] ¡Recompensa Canjeada! ${rewardName} (#${ticket.id.slice(-6)})`,
+      message: `¡Una usuaria ha canjeado una recompensa!\nProducto: ${rewardName}\nPrecio: ${rewardPrice} Pochipesos\nCódigo de Cupón: ${couponCode}\nCategoría: ${category}`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'CANJE_RECOMPENSA',
+        recompensa: rewardName,
+        codigoCupon: couponCode,
+        precioPochipesos: rewardPrice,
+        categoria: category,
+        fecha: timestamp
+      }
+    });
+
     return ticket;
   }
 

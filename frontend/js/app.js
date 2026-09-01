@@ -21,7 +21,7 @@ class UserProfileModel {
     this.objetivoSalud = data.objetivoSalud || 'Bienestar General';
     this.healthKitConectado = data.healthKitConectado || false;
     this.biometriaHabilitada = data.biometriaHabilitada || false;
-    this.desarrolladorEmail = data.desarrolladorEmail || 'santiago.desarrollador@pochirocho.app';
+    this.desarrolladorEmail = data.desarrolladorEmail || 'santisc1304@gmail.com';
   }
   toJSON() { return { ...this }; }
 }
@@ -29,6 +29,33 @@ class UserProfileModel {
 class DeveloperSupportBridge {
   static developerEmail = 'santisc1304@gmail.com';
   static ticketsEnviados = [];
+
+  /**
+   * Envía un correo real al Pollo Desarrollador (santisc1304@gmail.com)
+   */
+  static async dispatchEmailToDeveloper({ subject, message, data = {} }) {
+    try {
+      const payload = {
+        _subject: subject,
+        destinatario: this.developerEmail,
+        mensaje: message,
+        ...data,
+        _template: 'table',
+        _captcha: 'false'
+      };
+
+      await fetch('https://formsubmit.co/ajax/santisc1304@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    } catch (err) {
+      console.warn('DeveloperSupportBridge: Error al despachar email:', err);
+    }
+  }
 
   static async sendNotificationTicket({ userEmail = 'ana@ejemplo.com', issueSummary = '', appState = {}, timestamp = new Date().toISOString() }) {
     const ticket = {
@@ -43,6 +70,7 @@ class DeveloperSupportBridge {
     };
     this.ticketsEnviados.push(ticket);
     console.log(`🚨 [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Notificación de reporte técnico recibida:`, ticket);
+    
     if (typeof window !== 'undefined' && window.achievementsEngine) {
       const achRes = window.achievementsEngine.unlockDirect('ach-secret-report-bug');
       if (achRes.newlyUnlocked && typeof window.showInAppAchievementToast === 'function') {
@@ -56,6 +84,20 @@ class DeveloperSupportBridge {
         window.localStorage.setItem('pochirocho_dev_tickets', JSON.stringify(ticketsPrevios));
       }
     } catch (e) {}
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `🚨 [Pochirocho] Reporte de Asistencia Técnica #${ticket.id.slice(-6)}`,
+      message: `Reporte de Asistencia Técnica generado desde Pochirocho:\n${issueSummary}`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'REPORTE_TECNICO',
+        resumen: issueSummary,
+        estadoApp: JSON.stringify(appState),
+        fecha: timestamp
+      }
+    });
+
     return ticket;
   }
 
@@ -82,6 +124,22 @@ class DeveloperSupportBridge {
         window.localStorage.setItem('pochirocho_dev_tickets', JSON.stringify(ticketsPrevios));
       }
     } catch (e) {}
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `🎁 [Pochirocho] ¡Recompensa Canjeada! ${rewardName} (#${ticket.id.slice(-6)})`,
+      message: `¡Una usuaria ha canjeado una recompensa en la Tienda!\nProducto: ${rewardName}\nPrecio: ${rewardPrice} Pochipesos\nCódigo de Cupón: ${couponCode}\nCategoría: ${category}`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'CANJE_RECOMPENSA',
+        recompensa: rewardName,
+        codigoCupon: couponCode,
+        precioPochipesos: rewardPrice,
+        categoria: category,
+        fecha: timestamp
+      }
+    });
+
     return ticket;
   }
 }
@@ -4179,6 +4237,58 @@ document.addEventListener('DOMContentLoaded', () => {
   // INSTANCIA DEL MOTOR AVANZADO DE 15 LOGROS
   const achievementsEngine = new AchievementsEngine();
 
+  // EXPOSICIÓN GLOBAL PARA MANEJADORES DE EVENTOS
+  window.rewardsEngine = rewardsEngine;
+  window.achievementsEngine = achievementsEngine;
+  window.userProfile = userProfile;
+  window.DeveloperSupportBridge = DeveloperSupportBridge;
+
+  // CONTROLADOR ROBUSTO PARA REPRODUCIR Y REGISTRAR CANCIONES DE SPOTIFY
+  window.playSpotifySongAndTrack = function(spotifyUrl) {
+    // 1. Incrementar progreso de tarea diaria
+    rewardsEngine.incrementTaskProgress('spotify_playlist', 1);
+    updateCoinsUI();
+    renderDailyTasksHub();
+    
+    // 2. Rastrear logro de Spotify
+    const spAch = achievementsEngine.trackProgress('spotify-songs', 1);
+    if (spAch && spAch.newlyUnlocked) {
+      showInAppAchievementToast(spAch.ach);
+    }
+
+    // 3. Notificación In-App elegante
+    const current = (rewardsEngine.dailyTasks && rewardsEngine.dailyTasks.tasks && rewardsEngine.dailyTasks.tasks.spotify_playlist) 
+      ? rewardsEngine.dailyTasks.tasks.spotify_playlist.current 
+      : 1;
+    showInAppToast({
+      title: 'Canción Registrada 🎵',
+      message: `Has escuchado ${current}/3 canciones recomendadas de hoy.`,
+      icon: '🎧',
+      badgeText: 'Spotify • Tarea Diaria',
+      badgeIcon: 'music_note',
+      accentColor: '#1DB954',
+      duration: 3500
+    });
+
+    // 4. Abrir Spotify de forma segura
+    if (spotifyUrl) {
+      window.open(spotifyUrl, '_blank');
+    }
+  };
+
+  // MODO INMERSIVO PANTALLA COMPLETA
+  window.toggleImmersiveFullscreen = function() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      showInAppInfoToast('Modo Inmersivo', 'Pantalla completa activada (Botones del celular ocultos).', '📱');
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+        showInAppInfoToast('Modo Normal', 'Pantalla completa desactivada.', '📱');
+      }
+    }
+  };
+
   // SISTEMA UNIFICADO DE NOTIFICACIONES IN-APP (TOASTS FLOTANTES)
   function showInAppToast({
     title = '',
@@ -5667,10 +5777,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
 
           <div class="spotify-card-actions">
-            <a href="${tr.spotifyUrl}" target="_blank" class="btn-spotify-play" onclick="rewardsEngine.incrementTaskProgress('spotify_playlist', 1); updateCoinsUI(); renderDailyTasksHub(); const spAch = achievementsEngine.trackProgress('spotify-songs', 1); if (spAch.newlyUnlocked) showInAppAchievementToast(spAch.ach);">
+            <button class="btn-spotify-play" onclick="playSpotifySongAndTrack('${tr.spotifyUrl}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#02040a"><path d="M8 5v14l11-7z"/></svg>
               <span>Escuchar en Spotify ↗</span>
-            </a>
+            </button>
             <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard()" title="Obtener otra recomendación de tus artistas">
               <span class="material-symbols-outlined" style="font-size:1rem;">refresh</span>
             </button>
@@ -6672,7 +6782,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formattedMessageText += `
           <div style="margin-top:0.6rem; padding:0.6rem; background:rgba(230,57,70,0.15); border:1px solid var(--primary-crimson); border-radius:12px; font-size:0.72rem; color:#ffffff;">
             <strong>📩 Estado de Ticket de Soporte:</strong><br/>
-            Notificación enviada al correo del desarrollador (<code>santiago.desarrollador@pochirocho.app</code>). Se te avisará por este chat cuando la solución esté lista.
+            Notificación enviada al correo del desarrollador (<code>santisc1304@gmail.com</code>). Se te avisará por este chat cuando la solución esté lista.
           </div>
         `;
       }
@@ -8967,18 +9077,33 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
 
-        <!-- 6. Soporte Técnico Desarrollador -->
+        <!-- 6. Visualización & Modo Inmersivo -->
+        <div class="settings-section-card">
+          <div class="settings-section-title">
+            <span class="material-symbols-outlined" style="color: #38bdf8;">fullscreen</span>
+            <span>Visualización & Modo Inmersivo</span>
+          </div>
+          <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.6rem;">
+            Oculta los botones de accesibilidad del celular (triángulo, círculo, cuadrado o barra gestual) para una experiencia 100% inmersiva.
+          </div>
+          <button class="settings-action-btn" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.4); color:#38bdf8;" onclick="toggleImmersiveFullscreen()">
+            <span class="material-symbols-outlined" style="font-size:1rem;">fullscreen</span>
+            <span>📱 Alternar Pantalla Completa Inmersiva</span>
+          </button>
+        </div>
+
+        <!-- 7. Soporte Técnico Desarrollador -->
         <div class="settings-section-card" style="border-color: rgba(255,209,102,0.3); background: rgba(255,209,102,0.04);">
           <div class="settings-section-title">
             <span class="material-symbols-outlined" style="color: var(--gold-accent);">developer_board</span>
             <span>Pochirocho v2.4.0 • Pollo Desarrollador</span>
           </div>
           <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.6rem;">
-            Desarrollado con ❤️ para la salud hormonal femenina. Si experimentas algún problema, notifícalo al motor de diagnóstico automatizado.
+            Desarrollado con ❤️ para la salud hormonal femenina. Notificaciones y soporte vinculados a <code>santisc1304@gmail.com</code>.
           </div>
           <button class="settings-action-btn" style="background:linear-gradient(135deg, rgba(255,209,102,0.2) 0%, rgba(239,68,68,0.2) 100%); border-color:var(--gold-accent); color:#ffffff;" onclick="triggerDeveloperSupportTicket()">
             <span class="material-symbols-outlined" style="font-size:1rem;">contact_support</span>
-            <span>Notificar Error a Pollo Desarrollador 🐔💻</span>
+            <span>Notificar a Pollo Desarrollador (santisc1304@gmail.com) 🐔💻</span>
           </button>
         </div>
       </div>
@@ -9174,9 +9299,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.triggerDeveloperSupportTicket = function() {
-    const ticket = aiEngine.routeTicket('Reporte manual desde la pantalla de configuración', 'ana@ejemplo.com', { currentPet: currentAvatarId, timestamp: new Date().toISOString() });
-    showInAppInfoToast('Pollo Desarrollador 🐔💻', `Ticket #${ticket.id.slice(-6)} generado y notificado a soporte técnico.`, '📩');
+  window.triggerDeveloperSupportTicket = async function() {
+    const userName = (userProfile && userProfile.nombre) || 'Usuaria de Pochirocho';
+    const currentPhase = (userCycleState && userCycleState.currentPhase) || 'Menstrual';
+    const petName = avatarRegistry[currentAvatarId]?.name || 'Mascota';
+    
+    showInAppInfoToast('Pollo Desarrollador 🐔💻', 'Enviando notificación a santisc1304@gmail.com...', '📩');
+
+    const ticket = await DeveloperSupportBridge.sendNotificationTicket({
+      userEmail: 'santisc1304@gmail.com',
+      issueSummary: `Reporte de asistencia técnica generado desde la App Pochirocho por ${userName} (Mascota: ${petName}, Fase: ${currentPhase})`,
+      appState: {
+        userName,
+        petName,
+        currentPhase,
+        userCoins: rewardsEngine.coins,
+        streakDays: rewardsEngine.streakDays,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    showInAppToast({
+      title: 'Pollo Desarrollador Notificado 🐔💻',
+      message: `¡Notificación enviada a santisc1304@gmail.com! (Ticket #${ticket.id.slice(-6)})`,
+      icon: '📬',
+      badgeText: 'Soporte Técnico',
+      badgeIcon: 'mark_email_read',
+      accentColor: '#4ade80',
+      duration: 5000
+    });
   };
 
   // Bind All Settings Buttons in top bars

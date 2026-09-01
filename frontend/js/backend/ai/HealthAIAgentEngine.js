@@ -126,7 +126,7 @@ export class HealthAIAgentEngine {
     // =========================================================================
     if (intent === 'APP_BUG_QUERY') {
       await DeveloperSupportBridge.sendNotificationTicket({
-        userEmail: userProfile.desarrolladorEmail || 'ana@ejemplo.com',
+        userEmail: userProfile.desarrolladorEmail || 'santisc1304@gmail.com',
         issueSummary: userMessage,
         appState: { currentPet: persona.name, timestamp: new Date().toISOString() }
       });

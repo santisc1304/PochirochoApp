@@ -6,8 +6,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 :root {
+  color-scheme: dark !important;
   /* Base Dark Colors */
-  --bg-dark: #020617;
+  --bg-dark: #02040a;
 
   /* Default Active Theme Color Tokens (Dynamic based on selected Theme) */
   --theme-color: #E63946;
@@ -59,10 +60,12 @@
 
 html,
 body {
+  color-scheme: dark !important;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #02040a;
+  background-color: #02040a !important;
+  background: #02040a !important;
   color: #f8fafc;
   font-family: var(--font-body);
   display: flex;

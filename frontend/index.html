@@ -6,18 +6,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Pochirocho - App de Seguimiento Menstrual</title>
 
-  <!-- PWA & Mobile Web App Meta Tags -->
+  <!-- PWA & Mobile Web App Meta Tags & System Theme Colors -->
+  <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#02040a" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#02040a" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#02040a" />
+  <meta name="navigation-bar-color" content="#02040a" />
+  <meta name="msapplication-navbutton-color" content="#02040a" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Pochirocho" />
   <link rel="icon" type="image/png" href="assets/marcianito_secret_asset.png" />
   <link rel="apple-touch-icon" href="assets/marcianito_secret_asset.png" />
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=9.0" />
+  <link rel="stylesheet" href="css/style.css?v=10.0" />
 </head>
 
 <body>
@@ -812,12 +817,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=9.0"></script>
-  <script src="js/app.js?v=9.0"></script>
+  <script src="js/particles.js?v=10.0"></script>
+  <script src="js/app.js?v=10.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=9.0')
+        navigator.serviceWorker.register('./sw.js?v=10.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

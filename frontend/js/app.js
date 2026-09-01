@@ -4276,19 +4276,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // MODO INMERSIVO PANTALLA COMPLETA
-  window.toggleImmersiveFullscreen = function() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-      showInAppInfoToast('Modo Inmersivo', 'Pantalla completa activada (Botones del celular ocultos).', '📱');
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-        showInAppInfoToast('Modo Normal', 'Pantalla completa desactivada.', '📱');
-      }
-    }
-  };
-
   // SISTEMA UNIFICADO DE NOTIFICACIONES IN-APP (TOASTS FLOTANTES)
   function showInAppToast({
     title = '',
@@ -8904,24 +8891,19 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- 2. Conexión a Google Gemini API (IA Híbrida) -->
+        <!-- 2. Inteligencia Artificial • Salud & Afecto -->
         <div class="settings-section-card" style="border-color: rgba(168, 85, 247, 0.35); background: rgba(168, 85, 247, 0.05);">
           <div class="settings-section-title">
             <span class="material-symbols-outlined" style="color: var(--purple-accent);">psychology</span>
-            <span>Inteligencia Artificial • Google Gemini</span>
+            <span>Inteligencia Artificial • Salud & Afecto</span>
           </div>
-          <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.4rem;">
-            Estado actual: <strong id="settings-gemini-status">${hasGeminiKey ? '<span style="color:#4ade80;">🟢 Conectado con Gemini 1.5 Flash</span>' : '<span style="color:#cbd5e1;">⚪ Motor RAG Local Offline Activo</span>'}</strong>
+          <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.35rem;">
+            Asistente clínico-afectivo con soporte especializado en sincronía biológica y bienestar hormonal.
           </div>
-          <div style="display:flex; gap:0.4rem; margin-top:0.3rem;">
-            <input type="password" id="gemini-key-input" class="ai-input-field" style="font-size:0.75rem; padding:0.5rem;" placeholder="Pega tu API Key de Gemini..." value="${currentGeminiKey}"/>
-            <button class="settings-action-btn" style="width:auto; padding:0.5rem 0.85rem; margin:0; background:var(--purple-accent); color:white; font-weight:800;" onclick="saveGeminiApiKeyFromSettings()">
-              Guardar
-            </button>
+          <div style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.35rem 0.65rem; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); border-radius:10px; font-size:0.72rem; color:#4ade80; font-weight:700;">
+            <span>🟢</span>
+            <span>Motor IA Activo & Optimizado</span>
           </div>
-          <span id="settings-gemini-feedback" style="font-size:0.68rem; color:#94a3b8; margin-top:0.25rem; display:block;">
-            Si dejas el campo vacío o sin conexión, el agente responderá siempre con el motor RAG local de Pochirocho.
-          </span>
         </div>
 
         <!-- 3. Conexión de Cuenta de Spotify -->
@@ -8940,31 +8922,9 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             ` : `
               <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
-                <span>🟢 Iniciar Sesión con Spotify</span>
+                <span>🟢 Conectar con Spotify</span>
               </button>
             `}
-          </div>
-
-          <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(29, 185, 84, 0.25); border-radius: 12px; padding: 0.65rem; margin-top: 0.6rem; display:flex; flex-direction:column; gap:0.45rem;">
-            <label style="font-size: 0.7rem; color: #a7f3d0; display: block; font-weight: 700;">
-              🔑 Spotify Client ID (Developer Dashboard):
-            </label>
-            <div style="display:flex; gap:0.4rem;">
-              <input type="text" id="setting-spotify-client-id" value="${localStorage.getItem('pochirocho_spotify_client_id') || SpotifyPsychoacousticEngine.CLIENT_ID}" placeholder="Client ID de Spotify..." style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:white; font-size:0.72rem; font-family:monospace;" />
-              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_client_id', document.getElementById('setting-spotify-client-id').value.trim()); showInAppInfoToast('Spotify', 'Client ID guardado exitosamente.', '✓');">Guardar</button>
-            </div>
-
-            <label style="font-size: 0.7rem; color: #a7f3d0; display: block; font-weight: 700; margin-top:0.25rem;">
-              🔗 Redirect URI enviada a Spotify:
-            </label>
-            <div style="display:flex; gap:0.4rem;">
-              <input type="text" id="setting-spotify-redirect-uri" value="${SpotifyPsychoacousticEngine.getRedirectUri()}" style="flex:1; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#38bdf8; font-size:0.72rem; font-family:monospace;" />
-              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0;" onclick="localStorage.setItem('pochirocho_spotify_custom_redirect', document.getElementById('setting-spotify-redirect-uri').value.trim()); showInAppInfoToast('Spotify', 'Redirect URI personalizada guardada.', '✓');">Guardar</button>
-              <button type="button" class="btn-action" style="padding:0.4rem 0.65rem; font-size:0.72rem; margin:0; background:rgba(255,255,255,0.1);" onclick="navigator.clipboard.writeText(document.getElementById('setting-spotify-redirect-uri').value); showInAppInfoToast('Spotify', '¡Redirect URI copiada al portapapeles!', '📋');">Copiar</button>
-            </div>
-            <span style="font-size: 0.63rem; color: #94a3b8; display: block; line-height: 1.3;">
-              Asegúrate de pegar exactamente esta URL en tu <strong>Spotify Developer Dashboard > Settings > Redirect URIs</strong>.
-            </span>
           </div>
         </div>
 
@@ -9077,22 +9037,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
 
-        <!-- 6. Visualización & Modo Inmersivo -->
-        <div class="settings-section-card">
-          <div class="settings-section-title">
-            <span class="material-symbols-outlined" style="color: #38bdf8;">fullscreen</span>
-            <span>Visualización & Modo Inmersivo</span>
-          </div>
-          <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.6rem;">
-            Oculta los botones de accesibilidad del celular (triángulo, círculo, cuadrado o barra gestual) para una experiencia 100% inmersiva.
-          </div>
-          <button class="settings-action-btn" style="background:rgba(56, 189, 248, 0.15); border-color:rgba(56, 189, 248, 0.4); color:#38bdf8;" onclick="toggleImmersiveFullscreen()">
-            <span class="material-symbols-outlined" style="font-size:1rem;">fullscreen</span>
-            <span>📱 Alternar Pantalla Completa Inmersiva</span>
-          </button>
-        </div>
-
-        <!-- 7. Soporte Técnico Desarrollador -->
+        <!-- 6. Soporte Técnico Desarrollador -->
         <div class="settings-section-card" style="border-color: rgba(255,209,102,0.3); background: rgba(255,209,102,0.04);">
           <div class="settings-section-title">
             <span class="material-symbols-outlined" style="color: var(--gold-accent);">developer_board</span>
@@ -9122,17 +9067,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.saveGeminiApiKeyFromSettings = function() {
-    const input = document.getElementById('gemini-key-input');
-    if (input) {
-      GeminiConfig.setApiKey(input.value);
-      const statusEl = document.getElementById('settings-gemini-status');
-      const feedbackEl = document.getElementById('settings-gemini-feedback');
-      if (statusEl) statusEl.innerHTML = '<span style="color:#4ade80;">🟢 Clave Guardada y Conectada</span>';
-      if (feedbackEl) feedbackEl.innerHTML = '<span style="color:#4ade80;">✓ Guardado con éxito. Se aplicará de inmediato.</span>';
-    }
-  };
-
   window.updateSpotifySettingsStatus = function() {
     const statusEl = document.getElementById('settings-spotify-status');
     const slotEl = document.getElementById('settings-spotify-btn-slot');
@@ -9140,7 +9074,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (slotEl) {
       slotEl.innerHTML = `
         <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
-          <span>🟢 Iniciar Sesión con Spotify</span>
+          <span>🟢 Conectar con Spotify</span>
         </button>
       `;
     }

@@ -33,27 +33,86 @@ export class SpotifyPsychoacousticEngine {
   }
 
   /**
-   * Obtiene el token de acceso guardado en localStorage o verifica expiración
+   * Refresca silenciosamente el token de acceso usando el refresh_token guardado (OAuth PKCE)
+   */
+  static async refreshAccessToken() {
+    if (typeof localStorage === 'undefined') return null;
+    const refreshToken = localStorage.getItem('pochirocho_spotify_refresh_token');
+    if (!refreshToken) return null;
+
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: this.getClientId()
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.access_token) {
+          localStorage.setItem('pochirocho_spotify_access_token', data.access_token);
+          localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + ((data.expires_in || 3600) * 1000)).toString());
+          if (data.refresh_token) {
+            localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
+          }
+          localStorage.setItem('pochirocho_spotify_connected', 'true');
+          return data.access_token;
+        }
+      }
+    } catch (err) {
+      console.warn('SpotifyPsychoacousticEngine: Error al refrescar token de Spotify:', err);
+    }
+    return null;
+  }
+
+  /**
+   * Obtiene un token válido, refrescándolo automáticamente si está vencido sin desconectar jamás a la usuaria
+   */
+  static async getValidToken() {
+    if (typeof localStorage === 'undefined') return null;
+    let token = localStorage.getItem('pochirocho_spotify_access_token');
+    const expiresAt = localStorage.getItem('pochirocho_spotify_expires_at');
+    const refreshToken = localStorage.getItem('pochirocho_spotify_refresh_token');
+
+    if ((!token || (expiresAt && Date.now() > (parseInt(expiresAt, 10) - 60000))) && refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) return refreshed;
+    }
+
+    return token;
+  }
+
+  /**
+   * Obtiene el token de acceso guardado en localStorage sin desconectar
    */
   static getStoredToken() {
     if (typeof localStorage === 'undefined') return null;
     const token = localStorage.getItem('pochirocho_spotify_access_token');
     const expiresAt = localStorage.getItem('pochirocho_spotify_expires_at');
+    const refreshToken = localStorage.getItem('pochirocho_spotify_refresh_token');
 
-    if (!token || !expiresAt) return null;
-    if (Date.now() > parseInt(expiresAt, 10)) {
-      this.disconnect();
-      return null;
+    if (expiresAt && Date.now() > parseInt(expiresAt, 10) && refreshToken) {
+      this.refreshAccessToken().catch(() => {});
     }
     return token;
   }
 
   static isConnected() {
-    return !!this.getStoredToken();
+    if (typeof localStorage === 'undefined') return false;
+    return !!(
+      localStorage.getItem('pochirocho_spotify_connected') === 'true' ||
+      localStorage.getItem('pochirocho_spotify_access_token') ||
+      localStorage.getItem('pochirocho_spotify_refresh_token')
+    );
   }
 
   static disconnect() {
     if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('pochirocho_spotify_connected');
       localStorage.removeItem('pochirocho_spotify_access_token');
       localStorage.removeItem('pochirocho_spotify_refresh_token');
       localStorage.removeItem('pochirocho_spotify_expires_at');
@@ -119,6 +178,7 @@ export class SpotifyPsychoacousticEngine {
       if (data.refresh_token) {
         localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
       }
+      localStorage.setItem('pochirocho_spotify_connected', 'true');
 
       // Limpiar URL sin recargar
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -134,7 +194,7 @@ export class SpotifyPsychoacousticEngine {
    * Descarga el perfil completo y el repertorio histórico (artistas, tracks favoritos y me gusta)
    */
   static async fetchAndStoreUserProfile() {
-    const token = this.getStoredToken();
+    const token = await this.getValidToken() || this.getStoredToken();
     if (!token) return null;
 
     try {
@@ -334,7 +394,7 @@ export class SpotifyPsychoacousticEngine {
    * Obtiene la recomendación de canción usando el repertorio completo de la usuaria
    */
   static async getRecommendationForUser(phase = 'Ovulatoria', symptoms = []) {
-    const token = this.getStoredToken();
+    const token = await this.getValidToken() || this.getStoredToken();
     const acousticTargets = this.computeAcousticTargets(phase, symptoms);
     const isCalmPhase = acousticTargets.isCalmPhase;
     const excludedKeywords = ['metal', 'deathcore', 'screamo', 'hard rock', 'heavy metal', 'grindcore', 'punk', 'drill', 'hardcore', 'industrial', 'techno'];

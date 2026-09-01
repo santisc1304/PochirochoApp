@@ -142,6 +142,53 @@ class DeveloperSupportBridge {
 
     return ticket;
   }
+
+  /**
+   * Envía un mensaje redactado personalizado de la usuaria al Pollo Desarrollador (santisc1304@gmail.com)
+   */
+  static async sendCustomMessageTicket({ userName = 'Usuaria de Pochirocho', userEmail = '', subjectCategory = 'Mensaje General', messageText = '', appState = {}, timestamp = new Date().toISOString() }) {
+    const ticket = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      type: 'USER_DIRECT_MESSAGE',
+      userName,
+      userEmail,
+      subjectCategory,
+      messageText,
+      appState,
+      timestamp,
+      status: 'ENTREGADO_A_SANTIAGO',
+      developerEmail: this.developerEmail
+    };
+
+    this.ticketsEnviados.push(ticket);
+    console.log(`💌 [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Mensaje redactado por usuaria recibido:`, ticket);
+
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const ticketsPrevios = JSON.parse(window.localStorage.getItem('pochirocho_dev_tickets') || '[]');
+        ticketsPrevios.push(ticket);
+        window.localStorage.setItem('pochirocho_dev_tickets', JSON.stringify(ticketsPrevios));
+      }
+    } catch (e) {}
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `💌 [Pochirocho] Mensaje Directo de ${userName}: ${subjectCategory}`,
+      message: `Mensaje directo redactado por la usuaria:\n\n"${messageText}"\n\nDe: ${userName} (${userEmail || 'Sin correo especificado'})\nMotivo: ${subjectCategory}`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'MENSAJE_DIRECTO_USUARIA',
+        remitente: userName,
+        emailContacto: userEmail || 'No especificado',
+        categoria: subjectCategory,
+        mensajeCompleto: messageText,
+        estadoApp: JSON.stringify(appState),
+        fecha: timestamp
+      }
+    });
+
+    return ticket;
+  }
 }
 
 /**
@@ -9510,17 +9557,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- 8. Soporte Técnico Desarrollador -->
-        <div class="settings-section-card" style="border-color: rgba(255,209,102,0.3); background: rgba(255,209,102,0.04);">
+        <div class="settings-section-card" style="border-color: rgba(255,209,102,0.35); background: rgba(255,209,102,0.05);">
           <div class="settings-section-title">
             <span class="material-symbols-outlined" style="color: var(--gold-accent);">developer_board</span>
             <span>Pochirocho v2.4.0 • Pollo Desarrollador</span>
           </div>
-          <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.6rem;">
-            Desarrollado con ❤️ para la salud hormonal femenina. Notificaciones y soporte vinculados a <code>santisc1304@gmail.com</code>.
+          <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.6rem; line-height:1.4;">
+            Desarrollado con ❤️ para la salud hormonal femenina. Puedes escribir y redactar cualquier mensaje directo a Santiago en <code>santisc1304@gmail.com</code>.
           </div>
-          <button class="settings-action-btn" style="background:linear-gradient(135deg, rgba(255,209,102,0.2) 0%, rgba(239,68,68,0.2) 100%); border-color:var(--gold-accent); color:#ffffff;" onclick="triggerDeveloperSupportTicket()">
-            <span class="material-symbols-outlined" style="font-size:1rem;">contact_support</span>
-            <span>Notificar a Pollo Desarrollador (santisc1304@gmail.com) 🐔💻</span>
+          <button class="settings-action-btn" style="background:linear-gradient(135deg, rgba(255,209,102,0.25) 0%, rgba(255,117,143,0.25) 100%); border-color:var(--gold-accent); color:#ffffff; font-weight:700;" onclick="openDeveloperContactModal()">
+            <span class="material-symbols-outlined" style="font-size:1.1rem; color:#ffd166;">mail</span>
+            <span>Escribir Mensaje al Pollo Desarrollador (santisc1304@gmail.com) 🐔💌</span>
           </button>
         </div>
       </div>
@@ -9809,18 +9856,139 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.triggerDeveloperSupportTicket = async function() {
-    const userName = (userProfile && userProfile.nombre) || 'Usuaria de Pochirocho';
+  window.openDeveloperContactModal = function() {
+    let modal = document.getElementById('dev-contact-modal-overlay');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'dev-contact-modal-overlay';
+      modal.className = 'modal-overlay active';
+      modal.style.cssText = 'display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,4,10,0.92); backdrop-filter:blur(14px); z-index:100000; padding:1rem;';
+      document.body.appendChild(modal);
+    }
+
+    const userName = (userProfile && userProfile.nombre) || 'Ana';
+
+    modal.innerHTML = `
+      <div class="developer-contact-card animate-scale-up" style="width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(20px); border: 1px solid rgba(255, 209, 102, 0.35); border-radius: 28px; padding: 1.4rem; box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 35px rgba(255, 209, 102, 0.2); color: #f8fafc; font-family: var(--font-body);">
+        
+        <div class="settings-header-row" style="border-bottom: 1px solid rgba(255, 209, 102, 0.2); margin-bottom: 1rem; padding-bottom: 0.75rem; display:flex; align-items:center; justify-content:space-between;">
+          <div class="settings-title-group" style="display:flex; align-items:center; gap:0.6rem;">
+            <span style="font-size: 1.6rem;">🐔</span>
+            <div>
+              <h2 style="font-size: 1.05rem; margin: 0; font-weight:800; background: linear-gradient(135deg, #ffd166 0%, #ff758f 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Mensaje al Pollo Desarrollador</h2>
+              <span style="font-size: 0.68rem; color: #94a3b8; display:block;">Destino oficial: <strong>santisc1304@gmail.com</strong></span>
+            </div>
+          </div>
+          <button class="modal-close-btn" onclick="closeDeveloperContactModal()" aria-label="Cerrar" style="background:none; border:none; color:#cbd5e1; cursor:pointer;">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <p style="font-size: 0.74rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 1rem;">
+          Escribe tu mensaje, duda, idea de mejora, reporte o dedicatoria. Al presionar <strong>"Enviar Mensaje"</strong>, viajará directamente a la bandeja de entrada personal de Santiago 🐔💌.
+        </p>
+
+        <form id="dev-contact-form" onsubmit="handleSendDeveloperMessage(event)" style="display:flex; flex-direction:column; gap:0.75rem;">
+          
+          <!-- Nombre de la usuaria -->
+          <div>
+            <label style="font-size: 0.72rem; color: #ffd166; font-weight: 700; display: block; margin-bottom: 0.25rem;">
+              Tu Nombre o Apodo:
+            </label>
+            <input type="text" id="dev-msg-name" required value="${userName}" placeholder="Tu nombre..." style="width:100%; padding:0.6rem 0.8rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:12px; color:white; font-size:0.8rem;" />
+          </div>
+
+          <!-- Correo de contacto (Opcional) -->
+          <div>
+            <label style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 0.25rem;">
+              Tu Correo (Opcional, para responderte):
+            </label>
+            <input type="email" id="dev-msg-email" placeholder="tucorreo@ejemplo.com" style="width:100%; padding:0.6rem 0.8rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:12px; color:white; font-size:0.8rem;" />
+          </div>
+
+          <!-- Motivo / Categoría -->
+          <div>
+            <label style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 0.25rem;">
+              Motivo del Mensaje:
+            </label>
+            <select id="dev-msg-category" style="width:100%; padding:0.6rem 0.8rem; background:#0f172a; border:1px solid rgba(255,255,255,0.15); border-radius:12px; color:white; font-size:0.8rem; cursor:pointer;">
+              <option value="Sugerencia o Nueva Idea">💡 Sugerencia o Nueva Idea para la App</option>
+              <option value="Duda o Pregunta">❓ Duda o Pregunta sobre Pochirocho</option>
+              <option value="Reporte de Error">🐛 Reportar un Error o Problema</option>
+              <option value="Felicitaciones o Mensaje Especial">❤️ Felicitaciones o Mensaje con Cariño</option>
+              <option value="Otro Motivo">💬 Otro Motivo</option>
+            </select>
+          </div>
+
+          <!-- Mensaje Redactado -->
+          <div>
+            <label style="font-size: 0.72rem; color: #ffd166; font-weight: 700; display: block; margin-bottom: 0.25rem;">
+              Tu Mensaje Redactado:
+            </label>
+            <textarea id="dev-msg-body" required rows="4" placeholder="Escribe aquí todo lo que le quieras decir al Pollo Desarrollador..." style="width:100%; padding:0.7rem 0.8rem; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:14px; color:white; font-size:0.82rem; resize:vertical; font-family:var(--font-body); line-height:1.4;"></textarea>
+          </div>
+
+          <!-- Acciones -->
+          <div style="display:flex; gap:0.6rem; margin-top:0.4rem;">
+            <button type="button" style="flex:1; padding:0.75rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:14px; color:#cbd5e1; font-weight:600; cursor:pointer;" onclick="closeDeveloperContactModal()">
+              Cancelar
+            </button>
+            <button type="submit" id="btn-submit-dev-msg" style="flex:2; padding:0.75rem; background:linear-gradient(135deg, #ffd166 0%, #ff758f 100%); border:none; border-radius:14px; color:#02040a; font-weight:800; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer; box-shadow:0 4px 15px rgba(255,209,102,0.35);">
+              <span class="material-symbols-outlined" style="font-size:1.1rem;">send</span>
+              <span id="btn-submit-dev-text">Enviar Mensaje 💌</span>
+            </button>
+          </div>
+
+        </form>
+      </div>
+    `;
+
+    modal.style.display = 'flex';
+  };
+
+  window.closeDeveloperContactModal = function() {
+    const modal = document.getElementById('dev-contact-modal-overlay');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  };
+
+  window.handleSendDeveloperMessage = async function(event) {
+    if (event) event.preventDefault();
+
+    const nameInput = document.getElementById('dev-msg-name');
+    const emailInput = document.getElementById('dev-msg-email');
+    const catSelect = document.getElementById('dev-msg-category');
+    const bodyInput = document.getElementById('dev-msg-body');
+    const btnSubmit = document.getElementById('btn-submit-dev-msg');
+    const btnText = document.getElementById('btn-submit-dev-text');
+
+    const name = nameInput ? nameInput.value.trim() : 'Usuaria';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const category = catSelect ? catSelect.value : 'Mensaje General';
+    const message = bodyInput ? bodyInput.value.trim() : '';
+
+    if (!message) {
+      showInAppInfoToast('Mensaje Vacío', 'Por favor escribe tu mensaje antes de enviar.', '⚠️');
+      return;
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnText) btnText.textContent = 'Enviando a santisc1304@gmail.com...';
+
+    showInAppInfoToast('Pollo Desarrollador 🐔💻', 'Despachando mensaje a santisc1304@gmail.com...', '📩');
+
     const currentPhase = (userCycleState && userCycleState.currentPhase) || 'Menstrual';
     const petName = avatarRegistry[currentAvatarId]?.name || 'Mascota';
-    
-    showInAppInfoToast('Pollo Desarrollador 🐔💻', 'Enviando notificación a santisc1304@gmail.com...', '📩');
 
-    const ticket = await DeveloperSupportBridge.sendNotificationTicket({
-      userEmail: 'santisc1304@gmail.com',
-      issueSummary: `Reporte de asistencia técnica generado desde la App Pochirocho por ${userName} (Mascota: ${petName}, Fase: ${currentPhase})`,
+    const ticket = await DeveloperSupportBridge.sendCustomMessageTicket({
+      userName: name,
+      userEmail: email,
+      subjectCategory: category,
+      messageText: message,
       appState: {
-        userName,
+        userName: name,
+        userEmail: email,
         petName,
         currentPhase,
         userCoins: rewardsEngine.coins,
@@ -9829,15 +9997,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    closeDeveloperContactModal();
+
     showInAppToast({
-      title: 'Pollo Desarrollador Notificado 🐔💻',
-      message: `¡Notificación enviada a santisc1304@gmail.com! (Ticket #${ticket.id.slice(-6)})`,
+      title: '¡Mensaje Enviado con Éxito! 🐔💌',
+      message: `Tu mensaje "${category}" ha sido enviado a santisc1304@gmail.com.`,
       icon: '📬',
-      badgeText: 'Soporte Técnico',
+      badgeText: 'Pollo Desarrollador',
       badgeIcon: 'mark_email_read',
-      accentColor: '#4ade80',
-      duration: 5000
+      accentColor: '#ffd166',
+      duration: 5500
     });
+  };
+
+  window.triggerDeveloperSupportTicket = function() {
+    openDeveloperContactModal();
   };
 
   // Bind All Settings Buttons in top bars

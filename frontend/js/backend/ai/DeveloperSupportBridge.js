@@ -111,6 +111,47 @@ export class DeveloperSupportBridge {
     return ticket;
   }
 
+  /**
+   * Envía un mensaje redactado personalizado de la usuaria al Pollo Desarrollador (santisc1304@gmail.com)
+   */
+  static async sendCustomMessageTicket({ userName = 'Usuaria de Pochirocho', userEmail = '', subjectCategory = 'Mensaje General', messageText = '', appState = {}, timestamp = new Date().toISOString() }) {
+    const ticket = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      type: 'USER_DIRECT_MESSAGE',
+      userName,
+      userEmail,
+      subjectCategory,
+      messageText,
+      appState,
+      timestamp,
+      status: 'ENTREGADO_A_SANTIAGO',
+      developerEmail: this.developerEmail
+    };
+
+    this.ticketsEnviados.push(ticket);
+    console.log(`💌 [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Mensaje redactado por usuaria recibido:`, ticket);
+
+    this.persistTicket(ticket);
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `💌 [Pochirocho] Mensaje Directo de ${userName}: ${subjectCategory}`,
+      message: `Mensaje directo redactado por la usuaria:\n\n"${messageText}"\n\nDe: ${userName} (${userEmail || 'Sin correo especificado'})\nMotivo: ${subjectCategory}`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'MENSAJE_DIRECTO_USUARIA',
+        remitente: userName,
+        emailContacto: userEmail || 'No especificado',
+        categoria: subjectCategory,
+        mensajeCompleto: messageText,
+        estadoApp: JSON.stringify(appState),
+        fecha: timestamp
+      }
+    });
+
+    return ticket;
+  }
+
   static persistTicket(ticket) {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {

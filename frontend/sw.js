@@ -1,5 +1,5 @@
 // Service Worker de Pochirocho PWA (Cache-first para assets y red para IA)
-const CACHE_NAME = 'pochirocho-pwa-v25';
+const CACHE_NAME = 'pochirocho-pwa-v26';
 const ASSETS_TO_CACHE = [
   '/',
   './',

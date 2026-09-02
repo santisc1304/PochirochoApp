@@ -38,7 +38,7 @@ export const GeminiConfig = {
       throw new Error('NO_API_KEY');
     }
 
-    const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3-flash-preview'];
+    const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3-flash-preview'];
 
     // Construir historial de mensajes en formato Gemini
     const contents = [];

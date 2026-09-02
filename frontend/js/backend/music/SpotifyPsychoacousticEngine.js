@@ -130,7 +130,11 @@ export class SpotifyPsychoacousticEngine {
     const codeVerifier = this.generateRandomString(64);
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
-    localStorage.setItem('spotify_code_verifier', codeVerifier);
+    try {
+      localStorage.setItem('spotify_code_verifier', codeVerifier);
+      sessionStorage.setItem('spotify_code_verifier', codeVerifier);
+      document.cookie = `spotify_code_verifier=${codeVerifier}; path=/; max-age=600; SameSite=Lax`;
+    } catch(e) {}
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -154,40 +158,55 @@ export class SpotifyPsychoacousticEngine {
 
     if (!code) return false;
 
-    const codeVerifier = localStorage.getItem('spotify_code_verifier');
+    let codeVerifier = null;
+    try {
+      codeVerifier = localStorage.getItem('spotify_code_verifier') || sessionStorage.getItem('spotify_code_verifier');
+      if (!codeVerifier && document.cookie) {
+        const match = document.cookie.match(/spotify_code_verifier=([^;]+)/);
+        if (match) codeVerifier = match[1];
+      }
+    } catch(e) {}
+
     if (!codeVerifier) return false;
 
-    try {
-      const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          redirect_uri: this.getRedirectUri(),
-          client_id: this.getClientId(),
-          code_verifier: codeVerifier
-        })
-      });
+    const urisToTry = [this.getRedirectUri()];
+    const cleanOrigin = window.location.origin.replace(/\/+$/, '');
+    if (!urisToTry.includes(cleanOrigin + '/')) urisToTry.push(cleanOrigin + '/');
+    if (!urisToTry.includes(cleanOrigin)) urisToTry.push(cleanOrigin);
 
-      if (!response.ok) return false;
+    for (let redirectUri of urisToTry) {
+      try {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: redirectUri,
+            client_id: this.getClientId(),
+            code_verifier: codeVerifier
+          })
+        });
 
-      const data = await response.json();
-      localStorage.setItem('pochirocho_spotify_access_token', data.access_token);
-      localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + (data.expires_in * 1000)).toString());
-      if (data.refresh_token) {
-        localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('pochirocho_spotify_access_token', data.access_token);
+          localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + (data.expires_in * 1000)).toString());
+          if (data.refresh_token) {
+            localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
+          }
+          localStorage.setItem('pochirocho_spotify_connected', 'true');
+
+          // Limpiar URL sin recargar
+          window.history.replaceState({}, document.title, window.location.pathname);
+          await this.fetchAndStoreUserProfile();
+          return true;
+        }
+      } catch (err) {
+        console.warn('Error en intento de intercambio de token de Spotify:', err);
       }
-      localStorage.setItem('pochirocho_spotify_connected', 'true');
-
-      // Limpiar URL sin recargar
-      window.history.replaceState({}, document.title, window.location.pathname);
-      await this.fetchAndStoreUserProfile();
-      return true;
-    } catch (err) {
-      console.warn('Error al intercambiar token de Spotify:', err);
-      return false;
     }
+    return false;
   }
 
   /**
@@ -560,12 +579,50 @@ export class SpotifyPsychoacousticEngine {
         }
       };
     } catch (err) {
-      console.warn('Error al obtener recomendaciones personalizadas de Spotify:', err);
+      console.warn('Error al obtener recomendaciones personalizadas de Spotify, usando catálogo curado:', err);
+      
+      const curatedPhaseTracks = {
+        Menstrual: [
+          { id: 'curated-m1', name: 'Weightless', artist: 'Marconi Union', albumCover: 'assets/themes/Rosas.png', spotifyUrl: 'https://open.spotify.com/search/Weightless%20Marconi%20Union' },
+          { id: 'curated-m2', name: 'Gymnopédie No. 1', artist: 'Erik Satie', albumCover: 'assets/themes/Rosas.png', spotifyUrl: 'https://open.spotify.com/search/Gymnopedie%20No%201' }
+        ],
+        Folicular: [
+          { id: 'curated-f1', name: 'Sunroof', artist: 'Nicky Youre, dazy', albumCover: 'assets/themes/Corazones.png', spotifyUrl: 'https://open.spotify.com/search/Sunroof%20Nicky%20Youre' },
+          { id: 'curated-f2', name: 'Levitating', artist: 'Dua Lipa', albumCover: 'assets/themes/Corazones.png', spotifyUrl: 'https://open.spotify.com/search/Levitating%20Dua%20Lipa' }
+        ],
+        Ovulatoria: [
+          { id: 'curated-o1', name: 'Golden', artist: 'Harry Styles', albumCover: 'assets/themes/Lluvia.png', spotifyUrl: 'https://open.spotify.com/search/Golden%20Harry%20Styles' },
+          { id: 'curated-o2', name: 'As It Was', artist: 'Harry Styles', albumCover: 'assets/themes/Lluvia.png', spotifyUrl: 'https://open.spotify.com/search/As%20It%20Was%20Harry%20Styles' }
+        ],
+        Lutea: [
+          { id: 'curated-l1', name: 'Daylight', artist: 'Taylor Swift', albumCover: 'assets/themes/Girasoles.png', spotifyUrl: 'https://open.spotify.com/search/Daylight%20Taylor%20Swift' },
+          { id: 'curated-l2', name: 'Bloom', artist: 'The Paper Kites', albumCover: 'assets/themes/Girasoles.png', spotifyUrl: 'https://open.spotify.com/search/Bloom%20The%20Paper%20Kites' }
+        ]
+      };
+
+      const phaseKey = phase || 'Ovulatoria';
+      const fallbackList = curatedPhaseTracks[phaseKey] || curatedPhaseTracks.Ovulatoria;
+      const selectedCurated = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+      const tempo = Math.round(acousticTargets.target_tempo);
+      const dynamicReason = this.buildDynamicReason(selectedCurated.artist, selectedCurated.name, phaseKey, symptoms, tempo);
+
       return {
         isConnected: true,
-        phase,
-        acousticTargets,
-        error: err.message
+        phase: phaseKey,
+        acousticTargets: {
+          ...acousticTargets,
+          reasonText: dynamicReason
+        },
+        track: {
+          id: selectedCurated.id,
+          name: selectedCurated.name,
+          artist: selectedCurated.artist,
+          albumName: 'Sintonía Hormonal Curada',
+          albumCover: selectedCurated.albumCover,
+          previewUrl: null,
+          spotifyUrl: selectedCurated.spotifyUrl,
+          uri: ''
+        }
       };
     }
   }

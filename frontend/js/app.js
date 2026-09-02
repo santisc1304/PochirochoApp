@@ -1748,7 +1748,11 @@ class SpotifyPsychoacousticEngine {
     const codeVerifier = this.generateRandomString(64);
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
-    localStorage.setItem('spotify_code_verifier', codeVerifier);
+    try {
+      localStorage.setItem('spotify_code_verifier', codeVerifier);
+      sessionStorage.setItem('spotify_code_verifier', codeVerifier);
+      document.cookie = `spotify_code_verifier=${codeVerifier}; path=/; max-age=600; SameSite=Lax`;
+    } catch(e) {}
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -1772,40 +1776,55 @@ class SpotifyPsychoacousticEngine {
 
     if (!code) return false;
 
-    const codeVerifier = localStorage.getItem('spotify_code_verifier');
+    let codeVerifier = null;
+    try {
+      codeVerifier = localStorage.getItem('spotify_code_verifier') || sessionStorage.getItem('spotify_code_verifier');
+      if (!codeVerifier && document.cookie) {
+        const match = document.cookie.match(/spotify_code_verifier=([^;]+)/);
+        if (match) codeVerifier = match[1];
+      }
+    } catch(e) {}
+
     if (!codeVerifier) return false;
 
-    try {
-      const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          redirect_uri: this.getRedirectUri(),
-          client_id: this.getClientId(),
-          code_verifier: codeVerifier
-        })
-      });
+    const urisToTry = [this.getRedirectUri()];
+    const cleanOrigin = window.location.origin.replace(/\/+$/, '');
+    if (!urisToTry.includes(cleanOrigin + '/')) urisToTry.push(cleanOrigin + '/');
+    if (!urisToTry.includes(cleanOrigin)) urisToTry.push(cleanOrigin);
 
-      if (!response.ok) return false;
+    for (let redirectUri of urisToTry) {
+      try {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: redirectUri,
+            client_id: this.getClientId(),
+            code_verifier: codeVerifier
+          })
+        });
 
-      const data = await response.json();
-      localStorage.setItem('pochirocho_spotify_access_token', data.access_token);
-      localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + (data.expires_in * 1000)).toString());
-      if (data.refresh_token) {
-        localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('pochirocho_spotify_access_token', data.access_token);
+          localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + (data.expires_in * 1000)).toString());
+          if (data.refresh_token) {
+            localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
+          }
+          localStorage.setItem('pochirocho_spotify_connected', 'true');
+
+          // Limpiar URL sin recargar
+          window.history.replaceState({}, document.title, window.location.pathname);
+          await this.fetchAndStoreUserProfile();
+          return true;
+        }
+      } catch (err) {
+        console.warn('Error en intento de intercambio de token de Spotify:', err);
       }
-      localStorage.setItem('pochirocho_spotify_connected', 'true');
-
-      // Limpiar URL sin recargar
-      window.history.replaceState({}, document.title, window.location.pathname);
-      await this.fetchAndStoreUserProfile();
-      return true;
-    } catch (err) {
-      console.warn('Error al intercambiar token de Spotify:', err);
-      return false;
     }
+    return false;
   }
 
   /**
@@ -2178,12 +2197,50 @@ class SpotifyPsychoacousticEngine {
         }
       };
     } catch (err) {
-      console.warn('Error al obtener recomendaciones personalizadas de Spotify:', err);
+      console.warn('Error al obtener recomendaciones personalizadas de Spotify, usando catálogo curado:', err);
+      
+      const curatedPhaseTracks = {
+        Menstrual: [
+          { id: 'curated-m1', name: 'Weightless', artist: 'Marconi Union', albumCover: 'assets/themes/Rosas.png', spotifyUrl: 'https://open.spotify.com/search/Weightless%20Marconi%20Union' },
+          { id: 'curated-m2', name: 'Gymnopédie No. 1', artist: 'Erik Satie', albumCover: 'assets/themes/Rosas.png', spotifyUrl: 'https://open.spotify.com/search/Gymnopedie%20No%201' }
+        ],
+        Folicular: [
+          { id: 'curated-f1', name: 'Sunroof', artist: 'Nicky Youre, dazy', albumCover: 'assets/themes/Corazones.png', spotifyUrl: 'https://open.spotify.com/search/Sunroof%20Nicky%20Youre' },
+          { id: 'curated-f2', name: 'Levitating', artist: 'Dua Lipa', albumCover: 'assets/themes/Corazones.png', spotifyUrl: 'https://open.spotify.com/search/Levitating%20Dua%20Lipa' }
+        ],
+        Ovulatoria: [
+          { id: 'curated-o1', name: 'Golden', artist: 'Harry Styles', albumCover: 'assets/themes/Lluvia.png', spotifyUrl: 'https://open.spotify.com/search/Golden%20Harry%20Styles' },
+          { id: 'curated-o2', name: 'As It Was', artist: 'Harry Styles', albumCover: 'assets/themes/Lluvia.png', spotifyUrl: 'https://open.spotify.com/search/As%20It%20Was%20Harry%20Styles' }
+        ],
+        Lutea: [
+          { id: 'curated-l1', name: 'Daylight', artist: 'Taylor Swift', albumCover: 'assets/themes/Girasoles.png', spotifyUrl: 'https://open.spotify.com/search/Daylight%20Taylor%20Swift' },
+          { id: 'curated-l2', name: 'Bloom', artist: 'The Paper Kites', albumCover: 'assets/themes/Girasoles.png', spotifyUrl: 'https://open.spotify.com/search/Bloom%20The%20Paper%20Kites' }
+        ]
+      };
+
+      const phaseKey = phase || 'Ovulatoria';
+      const fallbackList = curatedPhaseTracks[phaseKey] || curatedPhaseTracks.Ovulatoria;
+      const selectedCurated = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+      const tempo = Math.round(acousticTargets.target_tempo);
+      const dynamicReason = this.buildDynamicReason(selectedCurated.artist, selectedCurated.name, phaseKey, symptoms, tempo);
+
       return {
         isConnected: true,
-        phase,
-        acousticTargets,
-        error: err.message
+        phase: phaseKey,
+        acousticTargets: {
+          ...acousticTargets,
+          reasonText: dynamicReason
+        },
+        track: {
+          id: selectedCurated.id,
+          name: selectedCurated.name,
+          artist: selectedCurated.artist,
+          albumName: 'Sintonía Hormonal Curada',
+          albumCover: selectedCurated.albumCover,
+          previewUrl: null,
+          spotifyUrl: selectedCurated.spotifyUrl,
+          uri: ''
+        }
       };
     }
   }
@@ -2368,19 +2425,21 @@ class HealthAIAgentEngine {
           groundingData = ragHits.map(h => `TÓPICO: ${h.node.title}\nEXPLICACIÓN BIOLÓGICA: ${h.node.biologicalExplanation}\nPASOS DE ACCIÓN: ${h.node.actionableSteps.join('; ')}`).join('\n\n');
         }
 
-        const systemPrompt = `Eres ${persona.name}, la compañera empática, cercana y conversacional de salud menstrual y bienestar en la app Pochirocho.
+        const systemPrompt = `Eres ${persona.name}, la compañera empática, cercana y experta en salud menstrual, bienestar hormonal y cuidado integral en la app Pochirocho.
 Tu personalidad es: ${persona.style}.
-ESTADO DE LA USUARIA:
+
+ESTADO FISIOLÓGICO DE LA USUARIA:
 - Fase Hormonal Actual: ${cyclePhase} (Día ${cycleDay} del ciclo).
-- Síntomas Registrados: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Sin síntomas severos'}.
+- Síntomas Registrados Hoy: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Sin síntomas agudos registrados'}.
 
-${groundingData ? `INFORMACIÓN DE REFERENCIA:\n${groundingData}\n` : ''}
+${groundingData ? `BASE MÉDICA Y CLÍNICA DE REFERENCIA:\n${groundingData}\n` : ''}
 
-DIRECTRICES:
-1. Responde de forma 100% conversacional, fluida y cálida como una amiga cercana en párrafos naturales.
-2. NUNCA uses encabezados robóticos ni plantillas repetitivas de tarjetas.
-3. Puedes conversar sobre CUALQUIER tema que la usuaria pregunte (emociones, dudas médicas, vida diaria, hábitos, nutrición, etc.).
-4. Si es relevante para su molestia, puedes invitarla con cariño a revisar las rutinas en su pestaña de Alivio.`;
+DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
+1. Ofrece una respuesta rica, amplia, detallada y pedagógica que no solo responda superficialmente, sino que explique con amor y claridad qué ocurre en su cuerpo, por qué se siente así y qué puede hacer de inmediato.
+2. Estructura tu mensaje en párrafos conversacionales y fluidos, con explicaciones biológicas claras pero sin tecnicismos fríos.
+3. Brinda al menos 3 a 4 recomendaciones prácticas y específicas (hábitos, nutrición reconfortante, postura o calor local, hidratación y descanso).
+4. Mantén siempre el tono cariñoso, protector y empático de ${persona.name}.
+5. Si es relevante para su molestia o relajación, invítala con cariño a abrir las rutinas terapéuticas disponibles en su sección de Alivio.`;
 
         const geminiResponseText = await GeminiConfig.generateResponse(systemPrompt, userMessage, conversationHistory);
 
@@ -2401,7 +2460,7 @@ DIRECTRICES:
     }
 
     // =========================================================================
-    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (PROSA FLUIDA Y NATURAL SIN PLANTILLAS)
+    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (RESPUESTA RICA, AMPLIA Y DETALLADA)
     // =========================================================================
     const searchResults = this.ragEngine.search(userMessage, 2);
 
@@ -2409,39 +2468,34 @@ DIRECTRICES:
       const topMatch = searchResults[0].node;
       const secondaryMatch = searchResults.length > 1 && searchResults[1].confidence > 50 ? searchResults[1].node : null;
 
-      // 1. Apertura de empatía variada
+      // 1. Apertura de empatía y validación emocional
       const empathyOpener = AgentPersonaEngine.generateValidationMessage(currentPet, userMessage, topMatch.title);
       
-      // 2. Explicación sencilla en prosa continua
+      // 2. Explicación biológica pedagógica y comprensible
       const simpleBio = HealthAIAgentEngine.simplifyBiologicalExplanation(topMatch, userMessage);
       
-      // 3. Consejos prácticos hilados en lenguaje conversacional
+      // 3. Recomendaciones prácticas detalladas con viñetas
       const cleanSteps = HealthAIAgentEngine.simplifyActionSteps(topMatch.actionableSteps);
-      let adviceText = '';
+      let stepsMarkdown = '';
       if (cleanSteps.length > 0) {
-        const step1 = cleanSteps[0].replace(/\.$/, '');
-        const step2 = cleanSteps.length > 1 ? cleanSteps[1].replace(/\.$/, '') : '';
-        if (step2) {
-          adviceText = `Te recomiendo probar ${step1.charAt(0).toLowerCase() + step1.slice(1)}, y también ${step2.charAt(0).toLowerCase() + step2.slice(1)}.`;
-        } else {
-          adviceText = `Te sugiero ${step1.charAt(0).toLowerCase() + step1.slice(1)}.`;
-        }
+        stepsMarkdown = 'Aquí tienes varias recomendaciones clave que te ayudarán a sentirte mucho mejor:\n\n' + 
+          cleanSteps.map(step => `• **${step}**`).join('\n\n');
       }
 
-      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${adviceText}`;
+      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${stepsMarkdown}`;
 
-      // 4. Mención natural de rutina
+      // 4. Mención de rutinas interactivas en Alivio
       let linkedRoutines = [...(topMatch.linkedRoutines || [])];
       if (secondaryMatch && secondaryMatch.linkedRoutines) {
         linkedRoutines = linkedRoutines.concat(secondaryMatch.linkedRoutines);
       }
 
       if (linkedRoutines.length > 0) {
-        responseMarkdown += `\n\nSi quieres que hagamos una pausa juntas, te dejé lista la rutina **${linkedRoutines[0].name}** en tu pestaña de **Alivio** ✨.`;
+        responseMarkdown += `\n\n🌿 **Tómate un momento:** He seleccionado para ti la rutina **"${linkedRoutines[0].name}"**. Puedes abrirla directamente aquí abajo o encontrarla en tu pestaña de **Alivio** para que la hagamos paso a paso juntas ✨.`;
       }
 
       if (topMatch.redFlags) {
-        responseMarkdown += `\n\n⚠️ *Ten en cuenta:* ${topMatch.redFlags}`;
+        responseMarkdown += `\n\n⚠️ *Nota de cuidado:* ${topMatch.redFlags}`;
       }
 
       const signOff = persona.signOffs[Math.floor(Math.random() * persona.signOffs.length)];
@@ -4993,17 +5047,72 @@ document.addEventListener('DOMContentLoaded', () => {
     return themeSettings.fixedTheme || 'red';
   }
 
+  function updateDashboardSlabUI() {
+    const phaseNameEl = document.getElementById('slab-phase-name');
+    const cycleDayEl = document.querySelector('.slab-cycle-day');
+    const cycleLengthEl = document.getElementById('slab-cycle-length-label');
+    const energyValEl = document.getElementById('slab-energy-val');
+    const pregnancyValEl = document.getElementById('slab-pregnancy-val');
+    const nextPhaseValEl = document.getElementById('slab-next-phase-val');
+
+    const cycleLen = parseInt(userProfile.duracionPromedioCiclo, 10) || 28;
+    const periodLen = parseInt(userProfile.duracionPromedioPeriodo, 10) || 5;
+    const currentDay = parseInt(userCycleState.currentDay, 10) || 1;
+    const currentPhase = userCycleState.currentPhase || 'Menstrual';
+
+    if (cycleLengthEl) cycleLengthEl.textContent = `Ciclo de ${cycleLen} Días`;
+    if (cycleDayEl) cycleDayEl.textContent = `Día ${currentDay}`;
+
+    if (phaseNameEl && userCycleState.phaseDetails && userCycleState.phaseDetails[currentPhase]) {
+      phaseNameEl.textContent = userCycleState.phaseDetails[currentPhase].name;
+    }
+
+    // Configuración Clínica & Biológica por Fase
+    if (currentPhase === 'Menstrual') {
+      if (energyValEl) energyValEl.textContent = 'Reposo & Recarga 🌙';
+      if (pregnancyValEl) {
+        pregnancyValEl.className = 'metric-value pregnancy-low';
+        pregnancyValEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem;">verified_user</span> Muy Bajo`;
+      }
+      const daysUntilNext = Math.max(1, (periodLen + 1) - currentDay);
+      if (nextPhaseValEl) nextPhaseValEl.textContent = `Fase Folicular (en ${daysUntilNext}d)`;
+    } else if (currentPhase === 'Folicular') {
+      if (energyValEl) energyValEl.textContent = 'Creatividad & Foco 🚀';
+      if (pregnancyValEl) {
+        pregnancyValEl.className = 'metric-value pregnancy-medium';
+        pregnancyValEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem;">trending_up</span> Creciente / Medio`;
+      }
+      const ovStart = Math.max(12, cycleLen - 16);
+      const daysUntilNext = Math.max(1, ovStart - currentDay);
+      if (nextPhaseValEl) nextPhaseValEl.textContent = `Fase Ovulatoria (en ${daysUntilNext}d)`;
+    } else if (currentPhase === 'Ovulatoria') {
+      if (energyValEl) energyValEl.textContent = 'Máxima Energía ✨';
+      if (pregnancyValEl) {
+        pregnancyValEl.className = 'metric-value pregnancy-high';
+        pregnancyValEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem;">warning</span> Muy Alto (Pico Fértil)`;
+      }
+      const luteaStart = Math.max(17, cycleLen - 11);
+      const daysUntilNext = Math.max(1, luteaStart - currentDay);
+      if (nextPhaseValEl) nextPhaseValEl.textContent = `Fase Lútea (en ${daysUntilNext}d)`;
+    } else if (currentPhase === 'Lutea') {
+      if (energyValEl) energyValEl.textContent = 'Calma & Introspección 🌿';
+      if (pregnancyValEl) {
+        pregnancyValEl.className = 'metric-value pregnancy-low';
+        pregnancyValEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem;">shield</span> Bajo`;
+      }
+      const daysUntilNext = Math.max(1, (cycleLen + 1) - currentDay);
+      if (nextPhaseValEl) nextPhaseValEl.textContent = `Menstruación (en ${daysUntilNext}d)`;
+    }
+  }
+  window.updateDashboardSlabUI = updateDashboardSlabUI;
+
   function setCyclePhase(phaseKey, dayNum = null) {
     if (!userCycleState.phaseDetails[phaseKey]) return;
     userCycleState.currentPhase = phaseKey;
     userCycleState.currentDay = dayNum || userCycleState.phaseDetails[phaseKey].defaultDay || 14;
 
-    // Actualizar Slab UI
-    const phaseNameEl = document.getElementById('slab-phase-name');
-    if (phaseNameEl) phaseNameEl.textContent = userCycleState.phaseDetails[phaseKey].name;
-
-    const cycleDayEl = document.querySelector('.slab-cycle-day');
-    if (cycleDayEl) cycleDayEl.textContent = `Día ${userCycleState.currentDay}`;
+    // Actualizar Slab UI Dinámico y Clínico
+    updateDashboardSlabUI();
 
     // Si está en modo automático por fase, aplicar el tono configurado para esa fase
     if (themeSettings.mode === 'auto_by_phase') {
@@ -6196,7 +6305,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!cardContainer) return;
 
     const displayPhase = userCycleState.currentPhase || 'Ovulatoria';
-    const pet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
+    const currentAvatar = localStorage.getItem('pochirocho_selected_avatar') || currentAvatarId || 'amy';
+    const pet = avatarRegistry[currentAvatar] || avatarRegistry.amy || { name: 'Manola' };
+    const petName = (pet && pet.name) || 'Tu Mascota';
     const recentSymptoms = userProfile?.sintomasHoy || [];
     const animClass = animate ? 'animate-spotify-card-entrance' : '';
 
@@ -6209,12 +6320,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="spotify-card-header">
             <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
-              <span class="spotify-card-title">Sintonía de ${pet.name}</span>
+              <span class="spotify-card-title">Sintonía de ${petName}</span>
             </div>
             <span class="spotify-vibe-pill">Personalizada 🎧</span>
           </div>
           <p class="spotify-card-desc">
-            Conecta tu cuenta de Spotify para que <strong>${pet.name}</strong> elija la mejor canción de tus <strong>artistas favoritos</strong> según tu <strong>Fase ${displayPhase}</strong> y síntomas de hoy.
+            Conecta tu cuenta de Spotify para que <strong>${petName}</strong> elija la mejor canción de tus <strong>artistas favoritos</strong> según tu <strong>Fase ${displayPhase}</strong> y síntomas de hoy.
           </p>
           <div style="display:flex; justify-content:center; margin-top:0.35rem;">
             <button class="btn-spotify-connect" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
@@ -6224,49 +6335,39 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
-    } else if (recResult.track) {
+    } else if (recResult && recResult.track) {
       const tr = recResult.track;
+      const trackName = tr.name || 'Sintonía Relajante';
+      const trackArtist = tr.artist || 'Música Curada';
+      const reason = (recResult.acousticTargets && recResult.acousticTargets.reasonText) || `Música calibrada a ${recResult.acousticTargets?.target_tempo || 90} BPM para tu Fase ${displayPhase}.`;
+      const tempo = recResult.acousticTargets?.target_tempo ? Math.round(recResult.acousticTargets.target_tempo) : 90;
+
       cardContainer.innerHTML = `
         <div class="spotify-recommendation-card spotify-connected ${animClass}">
           <div class="spotify-card-header">
             <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
-              <span class="spotify-card-title">Sintonía de ${pet.name}</span>
+              <span class="spotify-card-title">Sintonía de ${petName}</span>
             </div>
-            <span class="spotify-vibe-pill">${recResult.acousticTargets.target_tempo} BPM • ${displayPhase}</span>
+            <span class="spotify-vibe-pill">${tempo} BPM • ${displayPhase}</span>
           </div>
 
           <div class="spotify-track-item-row">
-            <img src="${tr.albumCover}" class="spotify-track-cover" alt="${tr.name}"/>
+            <img src="${tr.albumCover || 'assets/ui/spotify_default_cover.png'}" class="spotify-track-cover" alt="${trackName}"/>
             <div class="spotify-track-details">
-              <span class="spotify-track-name">${tr.name}</span>
-              <span class="spotify-track-artist">${tr.artist}</span>
-              <span class="spotify-track-reason">${recResult.acousticTargets.reasonText}</span>
+              <span class="spotify-track-name">${trackName}</span>
+              <span class="spotify-track-artist">${trackArtist}</span>
+              <span class="spotify-track-reason">${reason}</span>
             </div>
           </div>
 
           <div class="spotify-card-actions">
-            <button class="btn-spotify-play" onclick="playSpotifySongAndTrack('${tr.spotifyUrl}')">
+            <button class="btn-spotify-play" onclick="playSpotifySongAndTrack('${tr.spotifyUrl || 'https://open.spotify.com'}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#02040a"><path d="M8 5v14l11-7z"/></svg>
               <span>Escuchar en Spotify ↗</span>
             </button>
-            <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard()" title="Obtener otra recomendación de tus artistas">
+            <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard(true)" title="Obtener otra recomendación">
               <span class="material-symbols-outlined" style="font-size:1rem;">refresh</span>
-            </button>
-          </div>
-        </div>
-      `;
-    } else {
-      cardContainer.innerHTML = `
-        <div class="spotify-recommendation-card ${animClass}">
-          <div class="spotify-card-header">
-            <span class="spotify-card-title">Sintonía Spotify • ${displayPhase}</span>
-            <span class="spotify-vibe-pill">${recResult.acousticTargets.target_tempo} BPM</span>
-          </div>
-          <p class="spotify-card-desc">${recResult.acousticTargets.reasonText}</p>
-          <div class="spotify-card-actions">
-            <button class="btn-spotify-connect" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
-              <span>Sincronizar Artistas de Spotify</span>
             </button>
           </div>
         </div>
@@ -7222,8 +7323,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <span style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--gold-accent);">🧘‍♀️ ${rt.name}</span>
               <span style="font-size:0.68rem; color:#cbd5e1;">${rt.benefit || 'Rutina terapéutica recomendada'}</span>
             </div>
-            <button onclick="startExerciseRoutine('${rt.id}')" style="padding:0.4rem 0.75rem; background:linear-gradient(135deg, var(--rose-accent), var(--gold-accent)); border:none; border-radius:10px; color:#02040a; font-weight:800; font-size:0.72rem; cursor:pointer; white-space:nowrap;">
-              ▶️ Abrir
+            <button onclick="navigateToReliefAndOpenRoutine('${rt.id}')" style="padding:0.4rem 0.75rem; background:linear-gradient(135deg, var(--rose-accent), var(--gold-accent)); border:none; border-radius:10px; color:#02040a; font-weight:800; font-size:0.72rem; cursor:pointer; white-space:nowrap;">
+              ▶️ Abrir en Alivio
             </button>
           </div>
         `).join('');
@@ -10063,9 +10164,39 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', openSettingsModal);
   });
 
+  window.navigateToReliefAndOpenRoutine = function(routineId) {
+    const wheelItems = document.querySelectorAll('.wheel-nav-item');
+    wheelItems.forEach(i => {
+      if (i.getAttribute('data-tab') === 'relief') i.classList.add('active');
+      else i.classList.remove('active');
+    });
+
+    handleWheelTabChange('relief');
+
+    setTimeout(() => {
+      if (typeof startExerciseRoutine === 'function') {
+        startExerciseRoutine(routineId);
+      }
+    }, 180);
+  };
+
   // =========================================================================
   // BOOTSTRAP UNIFICADO (NUEVA USUARIA VS RECURRENTE)
   // =========================================================================
+  // Procesar Callback de Spotify de inmediato si está presente en la URL
+  if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+    SpotifyPsychoacousticEngine.handleAuthCallback().then(success => {
+      if (success) {
+        console.log('✅ Spotify conectado exitosamente.');
+        if (typeof updateSpotifySettingsStatus === 'function') updateSpotifySettingsStatus();
+        if (typeof renderSpotifyDashboardCard === 'function') renderSpotifyDashboardCard();
+        setTimeout(() => {
+          if (typeof navigateToTracker === 'function') navigateToTracker();
+        }, 300);
+      }
+    });
+  }
+
   const onboardingCompleted = localStorage.getItem('pochirocho_onboarding_completed') === 'true';
 
   if (!onboardingCompleted) {
@@ -10126,23 +10257,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyTheme(getThemeForCurrentState());
     setCyclePhase(activePhase, activeDay);
+    updateDashboardSlabUI();
     updateAvatarDisplay();
     updateCoinsUI();
     updateConnectors();
-
-    // PROCESAR CALLBACK DE AUTENTICACIÓN DE SPOTIFY SI VIENE DE REDIRECCIÓN (OAuth PKCE)
-    if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
-      SpotifyPsychoacousticEngine.handleAuthCallback().then(success => {
-        if (success) {
-          console.log('✅ Spotify conectado exitosamente.');
-          if (typeof updateSpotifySettingsStatus === 'function') updateSpotifySettingsStatus();
-          if (typeof renderSpotifyDashboardCard === 'function') renderSpotifyDashboardCard();
-          setTimeout(() => {
-            if (typeof navigateToTracker === 'function') navigateToTracker();
-          }, 300);
-        }
-      });
-    }
   }
 });
 

@@ -22,7 +22,7 @@
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=14.0" />
+  <link rel="stylesheet" href="css/style.css?v=15.0" />
 </head>
 
 <body>
@@ -639,9 +639,9 @@
           <div class="slab-header-row">
             <div class="slab-phase-badge" id="slab-phase-badge">
               <span class="material-symbols-outlined" style="font-size: 0.9rem;">auto_awesome</span>
-              <span id="slab-phase-name">Fase Ovulatoria</span>
+              <span id="slab-phase-name">Fase Menstrual</span>
             </div>
-            <span style="font-size: 0.72rem; color: #cbd5e1;">Ciclo de 28 Días</span>
+            <span id="slab-cycle-length-label" style="font-size: 0.72rem; color: #cbd5e1;">Ciclo de 28 Días</span>
           </div>
 
           <div class="slab-main-row"
@@ -650,24 +650,23 @@
               <span
                 style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; display: block;">Estado
                 Actual</span>
-              <h2 class="slab-cycle-day">Día 14</h2>
+              <h2 class="slab-cycle-day">Día 1</h2>
             </div>
             <span
-              style="font-family: var(--font-heading); font-size: 0.8rem; color: var(--gold-accent); font-weight: 700;">Máxima
-              Energía ✨</span>
+              style="font-family: var(--font-heading); font-size: 0.8rem; color: var(--gold-accent); font-weight: 700;" id="slab-energy-val">Reposo & Recarga 🌙</span>
           </div>
 
           <div class="slab-metrics-grid">
             <div class="metric-item">
               <span class="metric-label">Riesgo Embarazo</span>
-              <span class="metric-value pregnancy-high">
-                <span class="material-symbols-outlined" style="font-size: 1rem;">warning</span>
-                Elevada
+              <span class="metric-value pregnancy-low" id="slab-pregnancy-val">
+                <span class="material-symbols-outlined" style="font-size: 1rem;">verified_user</span>
+                Muy Bajo
               </span>
             </div>
             <div class="metric-item">
               <span class="metric-label">Próxima Fase</span>
-              <span class="metric-value" style="color: var(--cyan-accent);">Fase Lútea (14d)</span>
+              <span class="metric-value" id="slab-next-phase-val" style="color: var(--cyan-accent);">Fase Folicular (en 5d)</span>
             </div>
           </div>
         </section>
@@ -817,12 +816,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=14.0"></script>
-  <script src="js/app.js?v=14.0"></script>
+  <script src="js/particles.js?v=15.0"></script>
+  <script src="js/app.js?v=15.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=14.0')
+        navigator.serviceWorker.register('./sw.js?v=15.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

@@ -154,19 +154,21 @@ export class HealthAIAgentEngine {
           groundingData = ragHits.map(h => `TÓPICO: ${h.node.title}\nEXPLICACIÓN BIOLÓGICA: ${h.node.biologicalExplanation}\nPASOS DE ACCIÓN: ${h.node.actionableSteps.join('; ')}`).join('\n\n');
         }
 
-        const systemPrompt = `Eres ${persona.name}, la compañera empática, cercana y conversacional de salud menstrual y bienestar en la app Pochirocho.
+        const systemPrompt = `Eres ${persona.name}, la compañera empática, cercana y experta en salud menstrual, bienestar hormonal y cuidado integral en la app Pochirocho.
 Tu personalidad es: ${persona.style}.
-ESTADO DE LA USUARIA:
+
+ESTADO FISIOLÓGICO DE LA USUARIA:
 - Fase Hormonal Actual: ${cyclePhase} (Día ${cycleDay} del ciclo).
-- Síntomas Registrados: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Sin síntomas severos'}.
+- Síntomas Registrados Hoy: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Sin síntomas agudos registrados'}.
 
-${groundingData ? `INFORMACIÓN DE REFERENCIA:\n${groundingData}\n` : ''}
+${groundingData ? `BASE MÉDICA Y CLÍNICA DE REFERENCIA:\n${groundingData}\n` : ''}
 
-DIRECTRICES:
-1. Responde de forma 100% conversacional, fluida y cálida como una amiga cercana en párrafos naturales.
-2. NUNCA uses encabezados robóticos ni plantillas repetitivas de tarjetas.
-3. Puedes conversar sobre CUALQUIER tema que la usuaria pregunte (emociones, dudas médicas, vida diaria, hábitos, nutrición, etc.).
-4. Si es relevante para su molestia, puedes invitarla con cariño a revisar las rutinas en su pestaña de Alivio.`;
+DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
+1. Ofrece una respuesta rica, amplia, detallada y pedagógica que no solo responda superficialmente, sino que explique con amor y claridad qué ocurre en su cuerpo, por qué se siente así y qué puede hacer de inmediato.
+2. Estructura tu mensaje en párrafos conversacionales y fluidos, con explicaciones biológicas claras pero sin tecnicismos fríos.
+3. Brinda al menos 3 a 4 recomendaciones prácticas y específicas (hábitos, nutrición reconfortante, postura o calor local, hidratación y descanso).
+4. Mantén siempre el tono cariñoso, protector y empático de ${persona.name}.
+5. Si es relevante para su molestia o relajación, invítala con cariño a abrir las rutinas terapéuticas disponibles en su sección de Alivio.`;
 
         const geminiResponseText = await GeminiConfig.generateResponse(systemPrompt, userMessage, conversationHistory);
 
@@ -187,7 +189,7 @@ DIRECTRICES:
     }
 
     // =========================================================================
-    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (PROSA FLUIDA Y NATURAL SIN PLANTILLAS)
+    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (RESPUESTA RICA, AMPLIA Y DETALLADA)
     // =========================================================================
     const searchResults = this.ragEngine.search(userMessage, 2);
 
@@ -195,39 +197,34 @@ DIRECTRICES:
       const topMatch = searchResults[0].node;
       const secondaryMatch = searchResults.length > 1 && searchResults[1].confidence > 50 ? searchResults[1].node : null;
 
-      // 1. Apertura de empatía variada
+      // 1. Apertura de empatía y validación emocional
       const empathyOpener = AgentPersonaEngine.generateValidationMessage(currentPet, userMessage, topMatch.title);
       
-      // 2. Explicación sencilla en prosa continua
+      // 2. Explicación biológica pedagógica y comprensible
       const simpleBio = HealthAIAgentEngine.simplifyBiologicalExplanation(topMatch, userMessage);
       
-      // 3. Consejos prácticos hilados en lenguaje conversacional
+      // 3. Recomendaciones prácticas detalladas con viñetas
       const cleanSteps = HealthAIAgentEngine.simplifyActionSteps(topMatch.actionableSteps);
-      let adviceText = '';
+      let stepsMarkdown = '';
       if (cleanSteps.length > 0) {
-        const step1 = cleanSteps[0].replace(/\.$/, '');
-        const step2 = cleanSteps.length > 1 ? cleanSteps[1].replace(/\.$/, '') : '';
-        if (step2) {
-          adviceText = `Te recomiendo probar ${step1.charAt(0).toLowerCase() + step1.slice(1)}, y también ${step2.charAt(0).toLowerCase() + step2.slice(1)}.`;
-        } else {
-          adviceText = `Te sugiero ${step1.charAt(0).toLowerCase() + step1.slice(1)}.`;
-        }
+        stepsMarkdown = 'Aquí tienes varias recomendaciones clave que te ayudarán a sentirte mucho mejor:\n\n' + 
+          cleanSteps.map(step => `• **${step}**`).join('\n\n');
       }
 
-      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${adviceText}`;
+      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${stepsMarkdown}`;
 
-      // 4. Mención natural de rutina
+      // 4. Mención de rutinas interactivas en Alivio
       let linkedRoutines = [...(topMatch.linkedRoutines || [])];
       if (secondaryMatch && secondaryMatch.linkedRoutines) {
         linkedRoutines = linkedRoutines.concat(secondaryMatch.linkedRoutines);
       }
 
       if (linkedRoutines.length > 0) {
-        responseMarkdown += `\n\nSi quieres que hagamos una pausa juntas, te dejé lista la rutina **${linkedRoutines[0].name}** en tu pestaña de **Alivio** ✨.`;
+        responseMarkdown += `\n\n🌿 **Tómate un momento:** He seleccionado para ti la rutina **"${linkedRoutines[0].name}"**. Puedes abrirla directamente aquí abajo o encontrarla en tu pestaña de **Alivio** para que la hagamos paso a paso juntas ✨.`;
       }
 
       if (topMatch.redFlags) {
-        responseMarkdown += `\n\n⚠️ *Ten en cuenta:* ${topMatch.redFlags}`;
+        responseMarkdown += `\n\n⚠️ *Nota de cuidado:* ${topMatch.redFlags}`;
       }
 
       const signOff = persona.signOffs[Math.floor(Math.random() * persona.signOffs.length)];

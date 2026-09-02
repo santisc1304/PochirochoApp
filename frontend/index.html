@@ -650,66 +650,69 @@
           </button>
         </header>
 
-        <!-- Prominent Action Button: "Registrar Detalles" -->
-        <div class="prominent-action-container">
-          <button class="btn-prominent-log" id="btn-open-symptom-sheet">
-            <span class="material-symbols-outlined" style="font-size: 1.3rem;">add_circle</span>
-            <span>Registrar Detalles</span>
-          </button>
-        </div>
-
-        <!-- Enhanced Dashboard Info Slab -->
-        <section class="enhanced-dashboard-slab" id="enhanced-dashboard-slab">
-          <div class="slab-header-row">
-            <div class="slab-phase-badge" id="slab-phase-badge">
-              <span class="material-symbols-outlined" style="font-size: 0.9rem;">auto_awesome</span>
-              <span id="slab-phase-name">Fase Menstrual</span>
-            </div>
-            <span id="slab-cycle-length-label" style="font-size: 0.72rem; color: #cbd5e1;">Ciclo de 28 Días</span>
+        <!-- Main Centered / Proportionally Distributed Dashboard Content -->
+        <main class="tracker-dashboard-main-content" id="tracker-dashboard-main-content">
+          <!-- Prominent Action Button: "Registrar Detalles" -->
+          <div class="prominent-action-container">
+            <button class="btn-prominent-log" id="btn-open-symptom-sheet">
+              <span class="material-symbols-outlined" style="font-size: 1.3rem;">add_circle</span>
+              <span>Registrar Detalles</span>
+            </button>
           </div>
 
-          <div class="slab-main-row"
-            style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.2rem;">
-            <div>
+          <!-- Enhanced Dashboard Info Slab -->
+          <section class="enhanced-dashboard-slab" id="enhanced-dashboard-slab">
+            <div class="slab-header-row">
+              <div class="slab-phase-badge" id="slab-phase-badge">
+                <span class="material-symbols-outlined" style="font-size: 0.9rem;">auto_awesome</span>
+                <span id="slab-phase-name">Fase Menstrual</span>
+              </div>
+              <span id="slab-cycle-length-label" style="font-size: 0.72rem; color: #cbd5e1;">Ciclo de 28 Días</span>
+            </div>
+
+            <div class="slab-main-row"
+              style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.2rem;">
+              <div>
+                <span
+                  style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; display: block;">Estado
+                  Actual</span>
+                <h2 class="slab-cycle-day">Día 1</h2>
+              </div>
               <span
-                style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; display: block;">Estado
-                Actual</span>
-              <h2 class="slab-cycle-day">Día 1</h2>
+                style="font-family: var(--font-heading); font-size: 0.8rem; color: var(--gold-accent); font-weight: 700;" id="slab-energy-val">Reposo & Recarga 🌙</span>
             </div>
-            <span
-              style="font-family: var(--font-heading); font-size: 0.8rem; color: var(--gold-accent); font-weight: 700;" id="slab-energy-val">Reposo & Recarga 🌙</span>
-          </div>
 
-          <div class="slab-metrics-grid">
-            <div class="metric-item">
-              <span class="metric-label">Riesgo Embarazo</span>
-              <span class="metric-value pregnancy-low" id="slab-pregnancy-val">
-                <span class="material-symbols-outlined" style="font-size: 1rem;">verified_user</span>
-                Muy Bajo
-              </span>
+            <div class="slab-metrics-grid">
+              <div class="metric-item">
+                <span class="metric-label">Riesgo Embarazo</span>
+                <span class="metric-value pregnancy-low" id="slab-pregnancy-val">
+                  <span class="material-symbols-outlined" style="font-size: 1rem;">verified_user</span>
+                  Muy Bajo
+                </span>
+              </div>
+              <div class="metric-item">
+                <span class="metric-label">Próxima Fase</span>
+                <span class="metric-value" id="slab-next-phase-val" style="color: var(--cyan-accent);">Fase Folicular (en 5d)</span>
+              </div>
             </div>
-            <div class="metric-item">
-              <span class="metric-label">Próxima Fase</span>
-              <span class="metric-value" id="slab-next-phase-val" style="color: var(--cyan-accent);">Fase Folicular (en 5d)</span>
+          </section>
+
+          <!-- Avatar Section -->
+          <section class="tracker-avatar-section">
+            <div class="spike-avatar-wrapper" id="spike-avatar">
+              <img src="assets/avatares/Amy/Feliz_Amy.png" id="tracker-avatar-img" class="tracker-avatar-img" alt="Avatar"/>
             </div>
-          </div>
-        </section>
+            <div class="avatar-speech-bubble">
+              <h5 class="speech-title" id="tracker-avatar-title">Manola la Erizo 🦔</h5>
+              <p class="speech-text" id="tracker-avatar-text">
+                "¡Hoy tu energía está al máximo! Ideal para ejercicios suaves o estiramientos pélvicos. Bebe 2L de agua 💧"
+              </p>
+            </div>
+          </section>
 
-        <!-- Avatar Section -->
-        <section class="tracker-avatar-section">
-          <div class="spike-avatar-wrapper" id="spike-avatar">
-            <img src="assets/avatares/Amy/Feliz_Amy.png" id="tracker-avatar-img" class="tracker-avatar-img" alt="Avatar"/>
-          </div>
-          <div class="avatar-speech-bubble">
-            <h5 class="speech-title" id="tracker-avatar-title">Manola la Erizo 🦔</h5>
-            <p class="speech-text" id="tracker-avatar-text">
-              "¡Hoy tu energía está al máximo! Ideal para ejercicios suaves o estiramientos pélvicos. Bebe 2L de agua 💧"
-            </p>
-          </div>
-        </section>
-
-        <!-- Spotify Psychoacoustic Recommendation Section (Ubicado bajo el comentario del avatar) -->
-        <section class="spotify-recommendation-section" id="spotify-dashboard-section"></section>
+          <!-- Spotify Psychoacoustic Recommendation Section -->
+          <section class="spotify-recommendation-section" id="spotify-dashboard-section"></section>
+        </main>
 
         <!-- Dynamic Content Section for Semicircle Tabs -->
         <div id="tracker-subview-content" style="display: none;"></div>
@@ -840,12 +843,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=18.0"></script>
-  <script src="js/app.js?v=18.0"></script>
+  <script src="js/particles.js?v=19.0"></script>
+  <script src="js/app.js?v=19.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=18.0')
+        navigator.serviceWorker.register('./sw.js?v=19.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

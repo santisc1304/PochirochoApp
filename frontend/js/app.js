@@ -6542,6 +6542,11 @@ document.addEventListener('DOMContentLoaded', () => {
     viewHome.classList.remove('active');
     viewTracker.classList.add('active');
 
+    const dashMain = document.getElementById('tracker-dashboard-main-content');
+    if (dashMain) dashMain.style.display = 'flex';
+    const subview = document.getElementById('tracker-subview-content');
+    if (subview) subview.style.display = 'none';
+
     if (themePickerBar) themePickerBar.style.display = 'flex';
     if (prominentActionContainer) prominentActionContainer.style.display = 'flex';
 
@@ -6589,6 +6594,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewMotivation) viewMotivation.classList.remove('active');
     
     viewHome.classList.add('active');
+    const dashMain = document.getElementById('tracker-dashboard-main-content');
+    if (dashMain) dashMain.style.display = 'flex';
     enhancedSlab.classList.remove('animate-fall-delayed');
     enhancedSlab.style.opacity = '';
     enhancedSlab.style.transform = '';
@@ -9166,7 +9173,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleWheelTabChange(tab) {
+    const dashMain = document.getElementById('tracker-dashboard-main-content');
+    const subview = document.getElementById('tracker-subview-content');
+
     if (tab === 'dashboard') {
+      if (dashMain) dashMain.style.display = 'flex';
       if (themePickerBar) themePickerBar.style.display = 'flex';
       if (prominentActionContainer) prominentActionContainer.style.display = 'flex';
 
@@ -9180,18 +9191,18 @@ document.addEventListener('DOMContentLoaded', () => {
         avatarSection.style.display = 'flex';
       }
       if (avatarBubble) avatarBubble.classList.remove('bubble-hidden');
-      document.getElementById('tracker-subview-content').style.display = 'none';
+      if (subview) subview.style.display = 'none';
       const spotSec = document.getElementById('spotify-dashboard-section');
       if (spotSec) spotSec.style.display = 'flex';
       renderSpotifyDashboardCard();
     } else {
+      if (dashMain) dashMain.style.display = 'none';
       if (themePickerBar) themePickerBar.style.display = 'none';
       if (prominentActionContainer) prominentActionContainer.style.display = 'none';
 
       enhancedSlab.style.display = 'none';
       if (avatarSection) avatarSection.style.display = 'none';
-      const subview = document.getElementById('tracker-subview-content');
-      subview.style.display = 'flex';
+      if (subview) subview.style.display = 'flex';
       const spotSec = document.getElementById('spotify-dashboard-section');
       if (spotSec) spotSec.style.display = 'none';
 

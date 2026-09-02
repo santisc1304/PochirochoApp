@@ -413,12 +413,12 @@ export class SpotifyPsychoacousticEngine {
    * Obtiene la recomendación de canción usando el repertorio completo de la usuaria
    */
   static async getRecommendationForUser(phase = 'Ovulatoria', symptoms = []) {
-    const token = await this.getValidToken() || this.getStoredToken();
+    let token = await this.getValidToken() || this.getStoredToken();
     const acousticTargets = this.computeAcousticTargets(phase, symptoms);
     const isCalmPhase = acousticTargets.isCalmPhase;
     const excludedKeywords = ['metal', 'deathcore', 'screamo', 'hard rock', 'heavy metal', 'grindcore', 'punk', 'drill', 'hardcore', 'industrial', 'techno'];
 
-    if (!token) {
+    if (!token || !this.isConnected()) {
       return {
         isConnected: false,
         phase,
@@ -426,36 +426,58 @@ export class SpotifyPsychoacousticEngine {
       };
     }
 
+    // Helper fetch con auto-refresco en caso de 401
+    const spotifyFetch = async (url) => {
+      let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) {
+        const refreshedToken = await this.refreshAccessToken();
+        if (refreshedToken) {
+          token = refreshedToken;
+          res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        }
+      }
+      return res;
+    };
+
     try {
-      // 1. Extraer semillas de artistas históricos, canciones favoritas y canciones con me gusta
+      // 1. Asegurar que los artistas favoritos de la usuaria estén sincronizados
+      let storedArtists = [];
+      let storedTracks = [];
+      try {
+        storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
+        storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
+      } catch (e) {}
+
+      if (storedArtists.length === 0 && storedTracks.length === 0) {
+        await this.fetchAndStoreUserProfile();
+        try {
+          storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
+          storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
+        } catch (e) {}
+      }
+
       let seedArtists = [];
       let seedTracks = [];
 
-      try {
-        const storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
-        if (storedArtists.length) {
-          if (isCalmPhase) {
-            const calmArtists = storedArtists.filter(a => {
-              const genres = (a.genres || []).map(g => g.toLowerCase());
-              return !genres.some(g => excludedKeywords.some(ex => g.includes(ex)));
-            });
-            seedArtists = (calmArtists.length > 0 ? calmArtists : storedArtists).slice(0, 4).map(a => a.id);
-          } else {
-            seedArtists = storedArtists.slice(0, 4).map(a => a.id);
-          }
+      if (storedArtists.length) {
+        if (isCalmPhase) {
+          const calmArtists = storedArtists.filter(a => {
+            const genres = (a.genres || []).map(g => g.toLowerCase());
+            return !genres.some(g => excludedKeywords.some(ex => g.includes(ex)));
+          });
+          seedArtists = (calmArtists.length > 0 ? calmArtists : storedArtists).slice(0, 3).map(a => a.id);
+        } else {
+          seedArtists = storedArtists.slice(0, 3).map(a => a.id);
         }
-      } catch (e) {}
+      }
 
-      try {
-        const storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
-        if (storedTracks.length) {
-          seedTracks = storedTracks.slice(0, 3).map(t => t.id);
-        }
-      } catch (e) {}
+      if (storedTracks.length) {
+        seedTracks = storedTracks.slice(0, 2).map(t => t.id);
+      }
 
       let tracks = [];
 
-      // Intento 1: Spotify Recommendations API con semillas y límites acústicos estrictos
+      // Intento 1: Spotify Recommendations API oficial calibrada con los artistas favoritos de la usuaria
       let queryParams = new URLSearchParams({
         limit: '20',
         target_energy: acousticTargets.target_energy.toFixed(2),
@@ -489,16 +511,29 @@ export class SpotifyPsychoacousticEngine {
       }
 
       try {
-        const recResponse = await fetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const recResponse = await spotifyFetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`);
         if (recResponse.ok) {
           const recData = await recResponse.json();
           tracks = recData.tracks || [];
         }
       } catch (e) {}
 
-      // Fallback 1: Si no hay tracks de recommendations, usar canciones con Me Gusta o Top Tracks históricos
+      // Intento 2: Si no hubo respuesta de recommendations, buscar directamente pistas de los artistas favoritos de la usuaria en Spotify
+      if (tracks.length === 0 && storedArtists.length > 0) {
+        const candidateArtists = storedArtists.slice(0, 5);
+        const randomArtist = candidateArtists[Math.floor(Math.random() * candidateArtists.length)];
+        if (randomArtist && randomArtist.name) {
+          try {
+            const searchRes = await spotifyFetch(`https://api.spotify.com/v1/search?q=artist:${encodeURIComponent(randomArtist.name)}&type=track&limit=20`);
+            if (searchRes.ok) {
+              const searchData = await searchRes.json();
+              tracks = searchData.tracks?.items || [];
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Intento 3: Usar canciones guardadas de la biblioteca de la usuaria (Top Tracks o Liked Songs)
       if (tracks.length === 0) {
         try {
           const liked = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
@@ -514,35 +549,13 @@ export class SpotifyPsychoacousticEngine {
         } catch (e) {}
       }
 
-      // Fallback 2: Consultar directamente las canciones más escuchadas de toda la vida
-      if (tracks.length === 0) {
-        try {
-          const topTracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=25&time_range=long_term', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (topTracksRes.ok) {
-            const topData = await topTracksRes.json();
-            let items = topData.items || [];
-            if (isCalmPhase && items.length > 0) {
-              items = items.filter(t => {
-                const text = `${t.name} ${t.artists?.map(a => a.name).join(' ') || ''}`.toLowerCase();
-                return !excludedKeywords.some(ex => text.includes(ex));
-              });
-            }
-            tracks = items;
-          }
-        } catch (e) {}
-      }
-
-      // Fallback 3: Búsqueda temática según la fase
+      // Intento 4: Búsqueda dinámica en Spotify según el tempo y estado de la fase
       if (tracks.length === 0) {
         const searchKeyword = isCalmPhase
-          ? 'Acoustic calm gentle soft piano'
-          : (phase.toLowerCase().includes('folicular') ? 'Indie pop upbeat' : 'Dance pop upbeat rhythm');
+          ? 'calm acoustic piano soft'
+          : (phase.toLowerCase().includes('folicular') ? 'pop upbeat positive' : 'dance pop vital energy');
         try {
-          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=15`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const searchRes = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=15`);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
             tracks = searchData.tracks?.items || [];
@@ -551,10 +564,15 @@ export class SpotifyPsychoacousticEngine {
       }
 
       if (tracks.length === 0) {
-        throw new Error('NO_TRACKS_AVAILABLE');
+        return {
+          isConnected: false,
+          phase,
+          acousticTargets,
+          error: 'No se encontraron canciones en Spotify'
+        };
       }
 
-      // Elegir aleatoriamente entre los mejores candidatos para variedad
+      // Elegir entre los mejores candidatos reales de Spotify
       const selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
       const artistName = selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify';
       const tempo = Math.round(acousticTargets.target_tempo);
@@ -579,50 +597,12 @@ export class SpotifyPsychoacousticEngine {
         }
       };
     } catch (err) {
-      console.warn('Error al obtener recomendaciones personalizadas de Spotify, usando catálogo curado:', err);
-      
-      const curatedPhaseTracks = {
-        Menstrual: [
-          { id: 'curated-m1', name: 'Weightless', artist: 'Marconi Union', albumCover: 'assets/themes/Rosas.png', spotifyUrl: 'https://open.spotify.com/search/Weightless%20Marconi%20Union' },
-          { id: 'curated-m2', name: 'Gymnopédie No. 1', artist: 'Erik Satie', albumCover: 'assets/themes/Rosas.png', spotifyUrl: 'https://open.spotify.com/search/Gymnopedie%20No%201' }
-        ],
-        Folicular: [
-          { id: 'curated-f1', name: 'Sunroof', artist: 'Nicky Youre, dazy', albumCover: 'assets/themes/Corazones.png', spotifyUrl: 'https://open.spotify.com/search/Sunroof%20Nicky%20Youre' },
-          { id: 'curated-f2', name: 'Levitating', artist: 'Dua Lipa', albumCover: 'assets/themes/Corazones.png', spotifyUrl: 'https://open.spotify.com/search/Levitating%20Dua%20Lipa' }
-        ],
-        Ovulatoria: [
-          { id: 'curated-o1', name: 'Golden', artist: 'Harry Styles', albumCover: 'assets/themes/Lluvia.png', spotifyUrl: 'https://open.spotify.com/search/Golden%20Harry%20Styles' },
-          { id: 'curated-o2', name: 'As It Was', artist: 'Harry Styles', albumCover: 'assets/themes/Lluvia.png', spotifyUrl: 'https://open.spotify.com/search/As%20It%20Was%20Harry%20Styles' }
-        ],
-        Lutea: [
-          { id: 'curated-l1', name: 'Daylight', artist: 'Taylor Swift', albumCover: 'assets/themes/Girasoles.png', spotifyUrl: 'https://open.spotify.com/search/Daylight%20Taylor%20Swift' },
-          { id: 'curated-l2', name: 'Bloom', artist: 'The Paper Kites', albumCover: 'assets/themes/Girasoles.png', spotifyUrl: 'https://open.spotify.com/search/Bloom%20The%20Paper%20Kites' }
-        ]
-      };
-
-      const phaseKey = phase || 'Ovulatoria';
-      const fallbackList = curatedPhaseTracks[phaseKey] || curatedPhaseTracks.Ovulatoria;
-      const selectedCurated = fallbackList[Math.floor(Math.random() * fallbackList.length)];
-      const tempo = Math.round(acousticTargets.target_tempo);
-      const dynamicReason = this.buildDynamicReason(selectedCurated.artist, selectedCurated.name, phaseKey, symptoms, tempo);
-
+      console.warn('Error al obtener recomendaciones de Spotify Web API:', err);
       return {
-        isConnected: true,
-        phase: phaseKey,
-        acousticTargets: {
-          ...acousticTargets,
-          reasonText: dynamicReason
-        },
-        track: {
-          id: selectedCurated.id,
-          name: selectedCurated.name,
-          artist: selectedCurated.artist,
-          albumName: 'Sintonía Hormonal Curada',
-          albumCover: selectedCurated.albumCover,
-          previewUrl: null,
-          spotifyUrl: selectedCurated.spotifyUrl,
-          uri: ''
-        }
+        isConnected: false,
+        phase,
+        acousticTargets,
+        error: err.message
       };
     }
   }

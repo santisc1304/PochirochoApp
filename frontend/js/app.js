@@ -7088,6 +7088,246 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // =========================================================================
+  // MOTOR DE RECOMENDACIONES DIARIAS DINÁMICAS (DÍA POR DÍA) & AGENTE DE IA
+  // =========================================================================
+  function getDynamicDayAdvice(currentDay, currentPhase, isDelayed, daysLate, symptoms, pet) {
+    const petName = (pet && pet.name) || 'Tu Mascota';
+    const day = parseInt(currentDay, 10) || 1;
+
+    // 1. CASO DE RETRASO MENSTRUAL (DÍA POR DÍA)
+    if (isDelayed) {
+      const lateDays = parseInt(daysLate, 10) || 1;
+      let lateSpecificEnergy = '';
+      if (lateDays <= 2) {
+        lateSpecificEnergy = `Llevas ${lateDays} día(s) de retraso y es completamente usual. Un examen difícil, una semana de trabajo pesado o no dormir bien retrasan la ovulación. ¡Hoy suelta toda culpa!`;
+      } else if (lateDays <= 5) {
+        lateSpecificEnergy = `Llevas ${lateDays} días de retraso. Tu cuerpo simplemente está esperando el momento en que te sientas en paz y segura para soltar el ciclo. ¡Cero presiones!`;
+      } else {
+        lateSpecificEnergy = `Llevas +${lateDays} días de retraso. Es un momento ideal para consentirte, revisar cómo ha estado tu alimentación y considerar un test de tranquilidad si lo deseas.`;
+      }
+
+      return {
+        phaseBadgeText: `⏳ Retraso Menstrual (+${lateDays}d)`,
+        phaseThemeColor: '#f59e0b',
+        energy: lateSpecificEnergy,
+        nutrition: `Infusión tibia de orégano suave, canela con miel o jengibre para darle calorcito al útero. Un puñadito de semillas de calabaza y chocolate oscuro para relajar tu pelvis.`,
+        movement: `Movimientos suaves: postura del niño sobre un cojín o mariposa sentada en el suelo para abrir caderas y soltar la tensión lumbar.`,
+        emotions: `El estrés es el enemigo número uno de la regularidad. Date una tarde para ti sola, una ducha tibia y desconecta el celular temprano.`,
+        hydrationSleep: `2.3L de líquidos tibios. Duerme de lado con una almohadita entre las rodillas.`
+      };
+    }
+
+    // 2. FASE MENSTRUAL (DÍAS 1 A 5)
+    if (currentPhase === 'Menstrual') {
+      if (day === 1) {
+        return {
+          phaseBadgeText: `🩸 Menstrual • Día 1`,
+          phaseThemeColor: '#e63946',
+          energy: `Hoy arranca tu ciclo y tu cuerpo te pide una pausa total. Toda tu energía está concentrada en limpiarse y renovarse. ¡Ponte en modo descanso absoluto y sin culpas!`,
+          nutrition: `Sopita caliente, lentejitas o caldo de verduras. Acompáñalo con té de manzanilla tibio para relajar las contracciones del vientre.`,
+          movement: `Cero ejercicio hoy. Solo estiramientos suaves en la cama o posición fetal con una mantita calientita en el vientre.`,
+          emotions: `Es normal sentirte introspectiva o con ganas de estar solita. Abraza lo que sientes, ${petName} está aquí contigo.`,
+          hydrationSleep: `2.2L de agua tibia o infusiones. Duérmete temprano hoy.`
+        };
+      } else if (day === 2) {
+        return {
+          phaseBadgeText: `🩸 Menstrual • Día 2`,
+          phaseThemeColor: '#e63946',
+          energy: `Es el día de mayor flujo y trabajo de tu útero. Es normal sentir la pancita inflamada o pesada; trátate como una reina de cristal hoy.`,
+          nutrition: `Alimentos ricos en hierro: espinacas, frijolitos o frutos secos con unas gotas de limón o naranja para recargar fuerzas. Té de canela para los cólicos.`,
+          movement: `Acuéstate boca arriba y lleva tus rodillas al pecho (Apanasana) por 3 minutos respirando lento y profundo.`,
+          emotions: `Di que no a compromisos pesados. Tu prioridad número uno hoy eres tú.`,
+          hydrationSleep: `2.3L de líquidos calientitos. Almohada bajo las rodillas al dormir para relajar la espalda.`
+        };
+      } else if (day === 3) {
+        return {
+          phaseBadgeText: `🩸 Menstrual • Día 3`,
+          phaseThemeColor: '#e63946',
+          energy: `El flujo empieza a ceder y comienzas a sentir un pequeño respiro de alivio en tu cuerpo. Tu energía empieza a despertar lentamente.`,
+          nutrition: `Comidas ligeras y ricas: arrocito con verduras al vapor, aguacate y té de menta para despejar la digestión.`,
+          movement: `Una caminata suavecita de 15 minutos al aire libre para que circule el aire y se oxigenen tus músculos.`,
+          emotions: `Tu mente empieza a despejarse. Buen día para ver tu serie favorita o leer algo inspirador.`,
+          hydrationSleep: `2.2L de agua. Duerme tus 8 horas completas.`
+        };
+      } else { // Día 4 o 5
+        return {
+          phaseBadgeText: `🩸 Menstrual • Día ${day}`,
+          phaseThemeColor: '#e63946',
+          energy: `¡Ya casi terminas tu período! Tu cuerpo se siente mucho más liviano, fresco y con ganas de empezar a planear cosas lindas.`,
+          nutrition: `Frutas frescas con yogur, chía y ensaladas coloridas para devolverle hidratación y brillo a tu piel.`,
+          movement: `Estiramientos de todo el cuerpo, yoga fluido suave o paseos a paso ligero.`,
+          emotions: `Sensación de renacer. ¡Se viene tu etapa de mayor vitalidad y entusiasmo!`,
+          hydrationSleep: `2.3L de agua fresca con unas rodajitas de limón o pepino.`
+        };
+      }
+    }
+
+    // 3. FASE FOLICULAR (DÍAS 6 A 12/13)
+    if (currentPhase === 'Folicular') {
+      if (day <= 7) {
+        return {
+          phaseBadgeText: `🌱 Folicular • Día ${day}`,
+          phaseThemeColor: '#ff758f',
+          energy: `¡Comienza tu subida de energía! Tu ánimo se siente ligero, con una vibra positiva y ganas de retomar tus actividades con gusto.`,
+          nutrition: `Verduras crujientes, huevito, aguacate y frutos secos. Tu digestión está súper ágil.`,
+          movement: `Momento ideal para bailar tu música favorita, hacer pilates en casa o salir a trotar.`,
+          emotions: `Ganas de socializar, reírte y compartir con amigos o pareja.`,
+          hydrationSleep: `2.4L de agua fresca a lo largo del día.`
+        };
+      } else if (day <= 10) {
+        return {
+          phaseBadgeText: `🌱 Folicular • Día ${day}`,
+          phaseThemeColor: '#ff758f',
+          energy: `¡Tus baterías están al 90%! Te vas a notar con la mente súper rápida, creativa, concentrada y con ganas de comerte el mundo.`,
+          nutrition: `Ensaladas verdes frescas, brócoli, avena con frutas y alimentos que te den energía limpia y duradera.`,
+          movement: `Entrenamientos con más intensidad: pesas, cardio o pilates dinámico. Tu cuerpo aguanta todo.`,
+          emotions: `Confianza y optimismo a tope. Si tienes que empezar un proyecto o tomar una decisión, ¡hoy es el momento!`,
+          hydrationSleep: `2.4L de agua para mantener esa chispa encendida.`
+        };
+      } else { // Día 11 a 13
+        return {
+          phaseBadgeText: `🌱 Folicular • Día ${day}`,
+          phaseThemeColor: '#ff758f',
+          energy: `Días previos a tu ovulación. Tu piel se ve más linda que nunca, tus ojos brillan y tu magnetismo natural está en su punto más alto.`,
+          nutrition: `Antioxidantes deliciosos: arándanos, fresas, nueces y grasas saludables que cuidan tus células.`,
+          movement: `Tus músculos están listos para retos divertidos: correr, bailar o tu deporte favorito.`,
+          emotions: `Te sientes hermosa, atractiva y con ganas de compartir momentos especiales.`,
+          hydrationSleep: `2.5L de agüita fresca.`
+        };
+      }
+    }
+
+    // 4. FASE OVULATORIA (DÍAS 14 A 15)
+    if (currentPhase === 'Ovulatoria') {
+      return {
+        phaseBadgeText: `✨ Ovulatoria • Día ${day}`,
+        phaseThemeColor: '#7209B7',
+        energy: `¡Estás en el día cumbre de tu ciclo! Tu vitalidad, carisma y alegría están en su punto máximo. Todo tu cuerpo irradia bienestar.`,
+        nutrition: `Comidas frescas y llenas de color. Frutos rojos, salmón o semillas y jugos naturales sin azúcar.`,
+        movement: `Cualquier actividad que te haga sudar y sonreír: entrenamiento de fuerza, clase de baile o cardio.`,
+        emotions: `Confianza total en ti misma. Comunica lo que piensas, ¡todos van a conectar contigo fácilmente!`,
+        hydrationSleep: `2.5L de agua bien fresca durante el día.`
+      };
+    }
+
+    // 5. FASE LÚTEA (DÍAS 16 A 28)
+    if (day <= 19) {
+      return {
+        phaseBadgeText: `🌙 Lútea • Día ${day}`,
+        phaseThemeColor: '#1D3557',
+        energy: `La ovulación ya pasó y tu cuerpo entra en una energía tranquila, madura y productiva. Sigues con buen aguante pero prefieres planes más caseros.`,
+        nutrition: `Comidas calentitas y completas: sopas de verduras, quinoa o arroz integral y té verde o blanco.`,
+        movement: `Fuerza moderada, pilates controlado y caminatas al atardecer.`,
+        emotions: `Enfocada y reflexiva. Buen momento para organizar tus espacios y consentir tu hogar.`,
+        hydrationSleep: `2.3L de agua.`
+      };
+    } else if (day <= 24) {
+      return {
+        phaseBadgeText: `🌙 Lútea • Día ${day}`,
+        phaseThemeColor: '#1D3557',
+        energy: `Tu metabolismo se acelera un poquito y es normal que tu apetito aumente. Tu cuerpo busca reconfortarse y te pide calma.`,
+        nutrition: `Satisface tus antojitos inteligentemente: avena tibia con canela, plátano, camote al horno y un cuadrito de chocolate oscuro.`,
+        movement: `Estiramientos de cadera y espalda baja. Si sientes hinchazón, una caminata suave ayudará a mover los líquidos.`,
+        emotions: `Tus emociones están más perceptivas. Evita situaciones que te drenen y date pausas durante el día.`,
+        hydrationSleep: `2.3L de agua. Duerme con pijama fresquita y mantas cómodas.`
+      };
+    } else { // Día 25 a 28+
+      return {
+        phaseBadgeText: `🌙 Pre-menstrual • Día ${day}`,
+        phaseThemeColor: '#1D3557',
+        energy: `Tu cuerpo se está preparando para reiniciar el ciclo. Es el momento donde la paciencia contigo misma es tu mayor superpoder.`,
+        nutrition: `Evita cosas con exceso de sal para no sentirte hinchadita. Infusión tibia de manzanilla con lavanda antes de dormir.`,
+        movement: `Yoga restaurativo, estiramientos en el suelo sobre una alfombra suave y respiración diafragmática.`,
+        emotions: `Si te sientes más sensible, irritable o con ganas de llorar de la nada, ¡es completamente natural y pasajero! No te juzgues.`,
+        hydrationSleep: `Té tibio relajante y apagar el celular media hora antes de dormir.`
+      };
+    }
+  }
+
+  // =========================================================================
+  // GENERADOR LIVE CON AGENTE DE IA (GOOGLE GEMINI) PARA EL AVATAR
+  // =========================================================================
+  window.requestAIAvatarAdvice = async function(force = false) {
+    const petId = currentAvatarId || localStorage.getItem('pochirocho_selected_avatar') || 'amy';
+    const pet = avatarRegistry[petId] || avatarRegistry.amy;
+    const currentPhase = userCycleState.currentPhase || 'Ovulatoria';
+    const cycleLen = parseInt(userProfile.duracionPromedioCiclo, 10) || 28;
+    const currentDay = parseInt(userCycleState.currentDay, 10) || 1;
+    const isDelayed = userCycleState.isDelayed || currentDay > cycleLen;
+    const daysLate = userCycleState.daysLate || (isDelayed ? currentDay - cycleLen : 0);
+    const symptoms = userProfile.sintomasHoy || [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const cacheKey = `pochirocho_ai_daily_advice_${todayStr}_d${currentDay}_${petId}`;
+
+    const aiBtn = document.getElementById('avatar-spotlight-ai-btn');
+    const energyTextEl = document.getElementById('avatar-spotlight-energy-text');
+    const nutritionTextEl = document.getElementById('avatar-spotlight-nutrition-text');
+    const movementTextEl = document.getElementById('avatar-spotlight-movement-text');
+    const emotionalTextEl = document.getElementById('avatar-spotlight-emotional-text');
+    const hydrationTextEl = document.getElementById('avatar-spotlight-hydration-text');
+
+    if (aiBtn) {
+      aiBtn.innerHTML = `<span class="material-symbols-outlined avatar-ai-loading-pulse" style="font-size:0.85rem;">smart_toy</span> <span>${pet.name} está pensando...</span>`;
+      aiBtn.disabled = true;
+    }
+
+    const symptomsStr = symptoms.length > 0 ? symptoms.join(', ') : 'Ninguno marcado, se siente bien';
+
+    const prompt = `Eres ${pet.name}, la tierna, cariñosa y atenta mascota virtual de la app de bienestar Pochirocho.
+Estás hablando directamente con tu usuaria favorita de forma dulce, amorosa y con CERO tecnicismos médicos.
+
+HOY ES SU:
+- Día de su ciclo: Día ${currentDay} de ${cycleLen} días.
+- Fase actual: ${currentPhase} ${isDelayed ? `(con ${daysLate} días de retraso menstrual)` : ''}.
+- Síntomas y notas de hoy: ${symptomsStr}.
+
+Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE un objeto JSON válido con estas 5 claves (sin markdown, sin comillas triples ni texto extra):
+{
+  "energia": "2 o 3 frases cariñosas explicando exactamente cómo se siente su energía hoy en el Día ${currentDay} y por qué.",
+  "nutricion": "Qué comer o beber rico, reconfortante y nutritivo hoy.",
+  "movimiento": "Qué movimiento suave, estiramiento o descanso hacer hoy sin exigirse de más.",
+  "emociones": "Un consejo dulce y apapacho para su mente hoy.",
+  "hidratacion_sueno": "Meta de agua (ej: 2.2L - 2.5L) y cómo descansar rico hoy."
+}`;
+
+    try {
+      const geminiRes = await GeminiConfig.generateResponse(prompt, 'Genera mi consejo de hoy');
+      let cleanJsonStr = (geminiRes || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+      const firstBrace = cleanJsonStr.indexOf('{');
+      const lastBrace = cleanJsonStr.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanJsonStr = cleanJsonStr.substring(firstBrace, lastBrace + 1);
+      }
+      const aiData = JSON.parse(cleanJsonStr);
+
+      if (aiData && aiData.energia) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(aiData));
+        } catch(e) {}
+
+        if (energyTextEl) energyTextEl.textContent = aiData.energia;
+        if (nutritionTextEl) nutritionTextEl.textContent = aiData.nutricion;
+        if (movementTextEl) movementTextEl.textContent = aiData.movimiento;
+        if (emotionalTextEl) emotionalTextEl.textContent = aiData.emociones;
+        if (hydrationTextEl) hydrationTextEl.textContent = aiData.hidratacion_sueno || aiData.hidratacion;
+
+        if (aiBtn) {
+          aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:0.85rem; color:#a78bfa;">sparkles</span> <span>Creado con IA • 🔄</span>`;
+          aiBtn.disabled = false;
+        }
+        return;
+      }
+    } catch (err) {
+      console.warn('IA Avatar: usando motor dinámico diario:', err);
+    }
+
+    if (aiBtn) {
+      aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:0.85rem; color:#fbbf24;">sparkles</span> <span>✨ Conectar con IA</span>`;
+      aiBtn.disabled = false;
+    }
+  };
+
+  // =========================================================================
   // MODAL EXPANDIDO DE RECOMENDACIONES COMPLETAS DEL AVATAR (EN TRACKER)
   // =========================================================================
   window.openAvatarRecommendationsModal = function() {
@@ -7102,56 +7342,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const avatarImgSrc = getAvatarImagePath(petId, currentPhase);
 
-    // Configurar recomendaciones personalizadas clínicas y somáticas
-    let phaseBadgeText = '';
-    let phaseThemeColor = 'var(--primary-crimson)';
-    let energyAdvice = '';
-    let nutritionAdvice = '';
-    let movementAdvice = '';
-    let emotionalAdvice = '';
-    let hydrationSleepAdvice = '';
+    // 1. Obtener la recomendación calibrada única para este día exacto
+    const dayAdvice = getDynamicDayAdvice(currentDay, currentPhase, isDelayed, daysLate, symptoms, pet);
 
-    if (isDelayed) {
-      phaseBadgeText = `⏳ Retraso Menstrual (+${daysLate}d)`;
-      phaseThemeColor = '#f59e0b';
-      energyAdvice = `Tu cuerpo se está tomando su propio tiempo y es completamente normal. A veces el ajetreo del trabajo o estudio, no dormir bien o cambios en tu rutina hacen que tu período se demore unos días. ¡Hoy no te sobreexijas ni te preocupes!`;
-      nutritionAdvice = `Consiéntete con una infusión calientita de canela, orégano suave o jengibre con miel. Un poquito de chocolate oscuro o frutos secos te vendrán de maravilla para calmar cualquier tensión.`;
-      movementAdvice = `Movimientos suaves que te apapachen: estírate en la cama como gatito o haz la postura del niño en el suelo para aflojar la espalda baja y la pancita sin agotarte.`;
-      emotionalAdvice = `El estrés diario es el principal motivo de estos pequeños retrasos. Regálate una tarde tranquila, apaga las pantallas media hora antes de dormir y haz algo que te haga sonreír.`;
-      hydrationSleepAdvice = `Toma unos 2.3L de agua o té tibio. Duerme de lado con una almohadita entre las piernas para que tu espalda descanse delicioso.`;
-    } else if (currentPhase === 'Menstrual') {
-      phaseBadgeText = `🩸 Fase Menstrual (Día ${currentDay})`;
-      phaseThemeColor = '#e63946';
-      energyAdvice = `Tu energía está en modo recarga. Tu cuerpo está haciendo un trabajo hermoso limpiándose y renovándose por dentro, por eso es totalmente natural que sientas ganas de cobijarte y bajar el ritmo.`;
-      nutritionAdvice = `Come cosas que te abracen el corazón: lentejitas, espinacas y frutas frescas como mandarinas o fresas. Un tecito tibio de manzanilla calmará cualquier cólico en tu vientre.`;
-      movementAdvice = `Cero presiones. Caminatas muy suaves, estiramientos relajados en la cama y respiraciones hondas. ¡Hoy el mejor plan es descansar y consentirte!`;
-      emotionalAdvice = `Tu intuición y sensibilidad están a flor de piel. Ponte tu pijama más cómoda, colócate una mantita calientita en el abdomen y escucha tu música favorita.`;
-      hydrationSleepAdvice = `Toma al menos 2.2L de agua tibia o calditos reconfortantes. Duerme tus 8 horas completas sin alarmas si puedes.`;
-    } else if (currentPhase === 'Folicular') {
-      phaseBadgeText = `🌱 Fase Folicular (Día ${currentDay})`;
-      phaseThemeColor = '#ff758f';
-      energyAdvice = `¡Tus baterías se están llenando a tope! Te vas a sentir más despierta, motivada, con ganas de salir, crear y con una vibra súper bonita y fresca.`;
-      nutritionAdvice = `Alimentos frescos y coloridos: yogur con fruta, frutos secos y ensaladas ricas. Tu digestión está ligera y tu piel empezará a verse más radiante.`;
-      movementAdvice = `¡Es tu momento de brillar! Ideal para bailar, hacer pilates, salir a trotar o entrenar con ganas. Tu cuerpo te responderá de maravilla.`;
-      emotionalAdvice = `Tu mente está súper creativa y abierta. Excelente momento para planear citas divertidas, proyectos o aprender algo nuevo.`;
-      hydrationSleepAdvice = `Toma tus 2.4L de agüita fresca para mantener esa energía alta y la mente despejada todo el día.`;
-    } else if (currentPhase === 'Ovulatoria') {
-      phaseBadgeText = `✨ Fase Ovulatoria (Día ${currentDay})`;
-      phaseThemeColor = '#7209B7';
-      energyAdvice = `¡Estás en tu pico máximo de brillo y magnetismo! Te sentirás hermosa, sociable, con la autoestima arriba y toda la vitalidad del mundo.`;
-      nutritionAdvice = `Frutos rojos deliciosos, aguacate, nueces y comida rica que acompañe tu día activo. Tu cuerpo asimila todo súper bien ahora.`;
-      movementAdvice = `Fuerza, baile, cardio o tu deporte favorito. Si sientes un ligero piquetito en los ovarios, es solo tu cuerpo recordándote lo increíble que es.`;
-      emotionalAdvice = `Día perfecto para socializar, compartir con quienes quieres, lucirte en lo que hagas y disfrutar de tu alegría.`;
-      hydrationSleepAdvice = `Mantente fresca tomando 2.5L de agua a lo largo del día.`;
-    } else { // Lutea
-      phaseBadgeText = `🌙 Fase Lútea (Día ${currentDay})`;
-      phaseThemeColor = '#1D3557';
-      energyAdvice = `Tu cuerpo te pide calma y un poquito de mimo. Es la fase previa a tu período, así que es súper válido sentirte más sensible, querer tu espacio o tener más antojitos.`;
-      nutritionAdvice = `Comidas reconfortantes: avena con canela, plátano, camote y un toque de chocolate. Trata de no comer cosas muy saladas para no retener líquidos.`;
-      movementAdvice = `Yoga suavecito, caminatas al aire libre y estiramientos de espalda y caderas. Movimiento que te relaje y te quite la pesadez.`;
-      emotionalAdvice = `Sé súper dulce y comprensiva contigo misma. Si algo te abruma, pon límites sin culpa y regálate tu ritual nocturno favorito.`;
-      hydrationSleepAdvice = `Infusiones relajantes de manzanilla o lavanda antes de acostarte. Deja el café para la mañana para que puedas dormir profundo.`;
-    }
+    // 2. Verificar si ya existe un consejo generado previamente por la IA de Gemini para el día de hoy
+    const todayStr = new Date().toISOString().split('T')[0];
+    const cacheKey = `pochirocho_ai_daily_advice_${todayStr}_d${currentDay}_${petId}`;
+    let isFromAI = false;
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.energia) {
+          dayAdvice.energy = parsed.energia;
+          dayAdvice.nutrition = parsed.nutricion;
+          dayAdvice.movement = parsed.movimiento;
+          dayAdvice.emotions = parsed.emociones;
+          dayAdvice.hydrationSleep = parsed.hidratacion_sueno || parsed.hidratacion;
+          isFromAI = true;
+        }
+      }
+    } catch(e) {}
 
     // Ajuste adicional si hay síntomas registrados hoy
     let symptomsAdvice = '';
@@ -7179,32 +7391,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     overlay.innerHTML = `
-      <div class="avatar-spotlight-modal-card" style="--theme-color: ${phaseThemeColor};" onclick="event.stopPropagation();">
+      <div class="avatar-spotlight-modal-card" style="--theme-color: ${dayAdvice.phaseThemeColor};" onclick="event.stopPropagation();">
         <div class="avatar-spotlight-hero">
           <img src="${avatarImgSrc}" class="avatar-spotlight-img" alt="${pet.name}" />
-          <div class="avatar-spotlight-badge" style="background: ${phaseThemeColor};">
-            ${phaseBadgeText}
+          <div class="avatar-spotlight-badge" style="background: ${dayAdvice.phaseThemeColor};">
+            ${dayAdvice.phaseBadgeText}
           </div>
         </div>
 
         <div class="avatar-spotlight-sheet">
           <div class="avatar-spotlight-sheet-header">
             <div class="avatar-spotlight-sheet-title">
-              <span class="material-symbols-outlined" style="color: ${phaseThemeColor}; font-size: 1.15rem;">auto_awesome</span>
-              <span>Recomendaciones de ${pet.name}</span>
+              <span class="material-symbols-outlined" style="color: ${dayAdvice.phaseThemeColor}; font-size: 1.15rem;">auto_awesome</span>
+              <span>Consejo de ${pet.name}</span>
             </div>
-            <button class="modal-close-icon-btn" onclick="closeAvatarRecommendationsModal()" title="Cerrar" style="background:none; border:none; color:#ffffff; cursor:pointer;">
-              <span class="material-symbols-outlined" style="font-size: 1.2rem;">close</span>
-            </button>
+            <div style="display:flex; align-items:center; gap:0.45rem;">
+              <button class="avatar-ai-badge-btn" id="avatar-spotlight-ai-btn" onclick="requestAIAvatarAdvice(true)" title="Generar con Inteligencia Artificial">
+                <span class="material-symbols-outlined" style="font-size:0.85rem; color: #fbbf24;">sparkles</span>
+                <span>${isFromAI ? 'Creado con IA • 🔄' : '✨ Conectar con IA'}</span>
+              </button>
+              <button class="modal-close-icon-btn" onclick="closeAvatarRecommendationsModal()" title="Cerrar" style="background:none; border:none; color:#ffffff; cursor:pointer;">
+                <span class="material-symbols-outlined" style="font-size: 1.2rem;">close</span>
+              </button>
+            </div>
           </div>
 
           <!-- Diagnóstico & Energía -->
           <div class="avatar-spotlight-section-item">
             <div class="avatar-spotlight-section-label" style="color: #60a5fa;">
               <span class="material-symbols-outlined" style="font-size: 0.95rem;">bolt</span>
-              <span>Energía & Fisiología</span>
+              <span>Energía de tu Día ${currentDay}</span>
             </div>
-            <div class="avatar-spotlight-section-text">${energyAdvice}</div>
+            <div class="avatar-spotlight-section-text" id="avatar-spotlight-energy-text">${dayAdvice.energy}</div>
           </div>
 
           ${symptomsAdvice}
@@ -7213,18 +7431,18 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="avatar-spotlight-section-item">
             <div class="avatar-spotlight-section-label" style="color: #34d399;">
               <span class="material-symbols-outlined" style="font-size: 0.95rem;">local_cafe</span>
-              <span>Nutrición & Infusiones Terapéuticas</span>
+              <span>Nutrición & Bebidas de Hoy</span>
             </div>
-            <div class="avatar-spotlight-section-text">${nutritionAdvice}</div>
+            <div class="avatar-spotlight-section-text" id="avatar-spotlight-nutrition-text">${dayAdvice.nutrition}</div>
           </div>
 
           <!-- Movimiento Somático -->
           <div class="avatar-spotlight-section-item">
             <div class="avatar-spotlight-section-label" style="color: #f472b6;">
               <span class="material-symbols-outlined" style="font-size: 0.95rem;">self_improvement</span>
-              <span>Movimiento & Alivio Somático</span>
+              <span>Movimiento & Alivio</span>
             </div>
-            <div class="avatar-spotlight-section-text">${movementAdvice}</div>
+            <div class="avatar-spotlight-section-text" id="avatar-spotlight-movement-text">${dayAdvice.movement}</div>
           </div>
 
           <!-- Mente & Emociones -->
@@ -7233,7 +7451,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="material-symbols-outlined" style="font-size: 0.95rem;">favorite</span>
               <span>Mente & Autocuidado</span>
             </div>
-            <div class="avatar-spotlight-section-text">${emotionalAdvice}</div>
+            <div class="avatar-spotlight-section-text" id="avatar-spotlight-emotional-text">${dayAdvice.emotions}</div>
           </div>
 
           <!-- Hidratación & Descanso -->
@@ -7242,7 +7460,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="material-symbols-outlined" style="font-size: 0.95rem;">water_drop</span>
               <span>Hidratación & Descanso</span>
             </div>
-            <div class="avatar-spotlight-section-text">${hydrationSleepAdvice}</div>
+            <div class="avatar-spotlight-section-text" id="avatar-spotlight-hydration-text">${dayAdvice.hydrationSleep}</div>
           </div>
         </div>
 

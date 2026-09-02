@@ -149,10 +149,31 @@ export class SpotifyPsychoacousticEngine {
   }
 
   /**
-   * Intercepta el código de autorización tras el redirect de Spotify
+   * Intercepta el código de autorización o token tras el redirect de Spotify
    */
   static async handleAuthCallback() {
     if (typeof window === 'undefined') return false;
+
+    // 1. Soporte para Implicit Grant en Hash Fragment (#access_token=...)
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const expiresIn = parseInt(hashParams.get('expires_in'), 10) || 3600;
+        if (accessToken) {
+          localStorage.setItem('pochirocho_spotify_access_token', accessToken);
+          localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + (expiresIn * 1000)).toString());
+          localStorage.setItem('pochirocho_spotify_connected', 'true');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          await this.fetchAndStoreUserProfile();
+          return true;
+        }
+      } catch (e) {
+        console.warn('Spotify: Error al procesar token de hash:', e);
+      }
+    }
+
+    // 2. Soporte para Authorization Code PKCE (?code=...)
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
 

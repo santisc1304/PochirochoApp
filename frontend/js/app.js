@@ -1827,10 +1827,31 @@ class SpotifyPsychoacousticEngine {
   }
 
   /**
-   * Intercepta el código de autorización tras el redirect de Spotify
+   * Intercepta el código de autorización o token tras el redirect de Spotify
    */
   static async handleAuthCallback() {
     if (typeof window === 'undefined') return false;
+
+    // 1. Soporte para Implicit Grant en Hash Fragment (#access_token=...)
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const expiresIn = parseInt(hashParams.get('expires_in'), 10) || 3600;
+        if (accessToken) {
+          localStorage.setItem('pochirocho_spotify_access_token', accessToken);
+          localStorage.setItem('pochirocho_spotify_expires_at', (Date.now() + (expiresIn * 1000)).toString());
+          localStorage.setItem('pochirocho_spotify_connected', 'true');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          await this.fetchAndStoreUserProfile();
+          return true;
+        }
+      } catch (e) {
+        console.warn('Spotify: Error al procesar token de hash:', e);
+      }
+    }
+
+    // 2. Soporte para Authorization Code PKCE (?code=...)
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
 
@@ -7064,6 +7085,189 @@ document.addEventListener('DOMContentLoaded', () => {
       overlay.removeEventListener('click', closeOverlay);
     };
     overlay.addEventListener('click', closeOverlay);
+  };
+
+  // =========================================================================
+  // MODAL EXPANDIDO DE RECOMENDACIONES COMPLETAS DEL AVATAR (EN TRACKER)
+  // =========================================================================
+  window.openAvatarRecommendationsModal = function() {
+    const petId = currentAvatarId || localStorage.getItem('pochirocho_selected_avatar') || 'amy';
+    const pet = avatarRegistry[petId] || avatarRegistry.amy;
+    const currentPhase = userCycleState.currentPhase || 'Ovulatoria';
+    const cycleLen = parseInt(userProfile.duracionPromedioCiclo, 10) || 28;
+    const currentDay = parseInt(userCycleState.currentDay, 10) || 1;
+    const isDelayed = userCycleState.isDelayed || currentDay > cycleLen;
+    const daysLate = userCycleState.daysLate || (isDelayed ? currentDay - cycleLen : 0);
+    const symptoms = userProfile.sintomasHoy || [];
+
+    const avatarImgSrc = getAvatarImagePath(petId, currentPhase);
+
+    // Configurar recomendaciones personalizadas clínicas y somáticas
+    let phaseBadgeText = '';
+    let phaseThemeColor = 'var(--primary-crimson)';
+    let energyAdvice = '';
+    let nutritionAdvice = '';
+    let movementAdvice = '';
+    let emotionalAdvice = '';
+    let hydrationSleepAdvice = '';
+
+    if (isDelayed) {
+      phaseBadgeText = `⏳ Retraso Menstrual (+${daysLate}d)`;
+      phaseThemeColor = '#f59e0b';
+      energyAdvice = `Tus niveles de progesterona se mantienen elevados mientras tu cuerpo espera la señal de bajada. Es un momento para no sobreexigirte físicamente.`;
+      nutritionAdvice = `Infusiones calientes de canela, orégano suave o jengibre con miel para tonificar el útero. Consume magnesio (semillas de calabaza, chocolate 85%) para calmar la tensión pélvica.`;
+      movementAdvice = `Movilidad pélvica suave: círculos en cuatro apoyos (cat-cow) y posturas de apertura suave como postura del niño (Balasana) o mariposa en el suelo.`;
+      emotionalAdvice = `El cortisol y el estrés laboral o de rutina suelen retrasar la ovulación. Date permiso de descansar sin culpa y desconectar de pantallas 30 min antes de dormir.`;
+      hydrationSleepAdvice = `Meta: 2.3L de agua o infusiones tibias. Duerme en posición fetal con un cojín entre las rodillas para descomprimir la espalda baja.`;
+    } else if (currentPhase === 'Menstrual') {
+      phaseBadgeText = `🩸 Fase Menstrual (Día ${currentDay})`;
+      phaseThemeColor = '#e63946';
+      energyAdvice = `Tanto el estrógeno como la progesterona están en su punto basal más bajo. Tu cuerpo está destinando mucha energía biológica a la renovación del endometrio.`;
+      nutritionAdvice = `Prioriza hierro hémico (lentejas, espinacas, carnes magras) combinado con vitamina C (cítricos, fresas) para máxima absorción. Té de manzanilla o canela para relajar el músculo uterino.`;
+      movementAdvice = `Descanso activo reparador: estiramientos lumbares en cama, respiración diafragmática 4-7-8 y paseos suaves. Evita entrenamientos de alto impacto hoy.`;
+      emotionalAdvice = `Tu intuición y deseo de calma están elevados. Buen momento para escribir, leer, consentirte con una mantita térmica y escuchar tu lista relajante de Spotify.`;
+      hydrationSleepAdvice = `Meta: 2.2L de agua tibia o caldos nutritivos para compensar fluidos. Descansa mínimo 8 horas.`;
+    } else if (currentPhase === 'Folicular') {
+      phaseBadgeText = `🌱 Fase Folicular (Día ${currentDay})`;
+      phaseThemeColor = '#ff758f';
+      energyAdvice = `Tus niveles de estrógeno (estradiol) van en ascenso constante. Sentirás un aumento natural en tu claridad mental, sociabilidad y resistencia física.`;
+      nutritionAdvice = `Alimentos ricos en zinc, probióticos (yogur griego, kéfir) y verduras crucíferas (brócoli, rúcula) que ayudan al hígado a metabolizar los estrógenos crecientes.`;
+      movementAdvice = `Excelente ventana para entrenamientos dinámicos: pilates reformer/mat, cardio moderado, danza o rutinas de fuerza progresiva.`;
+      emotionalAdvice = `Tu mente está receptiva a nuevos proyectos, aprendizaje y creatividad. ¡Aprovecha este impulso de optimismo!`;
+      hydrationSleepAdvice = `Meta: 2.4L de agua con electrolitos naturales (una pizca de sal marina y limón).`;
+    } else if (currentPhase === 'Ovulatoria') {
+      phaseBadgeText = `✨ Fase Ovulatoria (Día ${currentDay})`;
+      phaseThemeColor = '#7209B7';
+      energyAdvice = `Pico máximo de estrógeno y descarga de hormona luteinizante (LH). Máxima vitalidad física, confianza comunicativa y magnetismo biológico.`;
+      nutritionAdvice = `Alimentos ricos en antioxidantes (arándanos, frutos rojos) y grasas saludables (aguacate, nueces, salmón) para proteger el folículo ovulatorio y la calidad celular.`;
+      movementAdvice = `Tu fuerza y resistencia están en su clímax: levantamiento de pesas, HIIT o carreras cortas. (Si sientes una pequeña puntada ovárica, acompáñala con estiramientos suaves).`;
+      emotionalAdvice = `Excelente momento para reuniones importantes, socializar y expresar tus ideas con total elocuencia y seguridad.`;
+      hydrationSleepAdvice = `Meta: 2.5L de agua fresca.`;
+    } else { // Lutea
+      phaseBadgeText = `🌙 Fase Lútea (Día ${currentDay})`;
+      phaseThemeColor = '#1D3557';
+      energyAdvice = `La progesterona es la hormona dominante. Tu metabolismo basal aumenta ligeramente (+100-200 kcal/día), pero tu sistema nervioso busca introspección y calma.`;
+      nutritionAdvice = `Carbohidratos complejos (camote, avena, arroz integral) para estabilizar la serotonina y prevenir antojos bruscos. Reduce el exceso de sodio para evitar retención de líquidos.`;
+      movementAdvice = `Pilates enfocado en core suave, yoga restaurativo, caminatas al aire libre y estiramientos miofasciales de glúteos y espalda baja.`;
+      emotionalAdvice = `Mayor sensibilidad emocional o necesidad de espacio personal. Practica límites saludables y rutinas de autocuidado nocturno.`;
+      hydrationSleepAdvice = `Meta: 2.3L de agua e infusiones de lavanda o pasiflora antes de dormir. Evita cafeína después de las 3:00 PM.`;
+    }
+
+    // Ajuste adicional si hay síntomas registrados hoy
+    let symptomsAdvice = '';
+    if (symptoms.length > 0) {
+      const symptomListStr = symptoms.join(', ');
+      symptomsAdvice = `
+        <div class="avatar-spotlight-section-item" style="border-left: 3px solid var(--theme-color, #e63946);">
+          <div class="avatar-spotlight-section-label" style="color: var(--primary-crimson);">
+            <span class="material-symbols-outlined" style="font-size: 0.95rem;">healing</span>
+            <span>Ajuste por tus síntomas de hoy (${symptomListStr})</span>
+          </div>
+          <div class="avatar-spotlight-section-text">
+            ${pet.name} detectó tus registros. Aplica termoterapia local (compresa tibia 15-20 min) y realiza una rutina guiada en el <strong>Centro de Alivio</strong> para liberar tensión miofascial.
+          </div>
+        </div>
+      `;
+    }
+
+    let overlay = document.getElementById('avatar-recommendations-modal-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'avatar-recommendations-modal-overlay';
+      overlay.className = 'avatar-recommendations-modal-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div class="avatar-spotlight-modal-card" style="--theme-color: ${phaseThemeColor};" onclick="event.stopPropagation();">
+        <div class="avatar-spotlight-hero">
+          <img src="${avatarImgSrc}" class="avatar-spotlight-img" alt="${pet.name}" />
+          <div class="avatar-spotlight-badge" style="background: ${phaseThemeColor};">
+            ${phaseBadgeText}
+          </div>
+        </div>
+
+        <div class="avatar-spotlight-sheet">
+          <div class="avatar-spotlight-sheet-header">
+            <div class="avatar-spotlight-sheet-title">
+              <span class="material-symbols-outlined" style="color: ${phaseThemeColor}; font-size: 1.15rem;">auto_awesome</span>
+              <span>Recomendaciones de ${pet.name}</span>
+            </div>
+            <button class="modal-close-icon-btn" onclick="closeAvatarRecommendationsModal()" title="Cerrar" style="background:none; border:none; color:#ffffff; cursor:pointer;">
+              <span class="material-symbols-outlined" style="font-size: 1.2rem;">close</span>
+            </button>
+          </div>
+
+          <!-- Diagnóstico & Energía -->
+          <div class="avatar-spotlight-section-item">
+            <div class="avatar-spotlight-section-label" style="color: #60a5fa;">
+              <span class="material-symbols-outlined" style="font-size: 0.95rem;">bolt</span>
+              <span>Energía & Fisiología</span>
+            </div>
+            <div class="avatar-spotlight-section-text">${energyAdvice}</div>
+          </div>
+
+          ${symptomsAdvice}
+
+          <!-- Nutrición & Infusiones -->
+          <div class="avatar-spotlight-section-item">
+            <div class="avatar-spotlight-section-label" style="color: #34d399;">
+              <span class="material-symbols-outlined" style="font-size: 0.95rem;">local_cafe</span>
+              <span>Nutrición & Infusiones Terapéuticas</span>
+            </div>
+            <div class="avatar-spotlight-section-text">${nutritionAdvice}</div>
+          </div>
+
+          <!-- Movimiento Somático -->
+          <div class="avatar-spotlight-section-item">
+            <div class="avatar-spotlight-section-label" style="color: #f472b6;">
+              <span class="material-symbols-outlined" style="font-size: 0.95rem;">self_improvement</span>
+              <span>Movimiento & Alivio Somático</span>
+            </div>
+            <div class="avatar-spotlight-section-text">${movementAdvice}</div>
+          </div>
+
+          <!-- Mente & Emociones -->
+          <div class="avatar-spotlight-section-item">
+            <div class="avatar-spotlight-section-label" style="color: #a78bfa;">
+              <span class="material-symbols-outlined" style="font-size: 0.95rem;">favorite</span>
+              <span>Mente & Autocuidado</span>
+            </div>
+            <div class="avatar-spotlight-section-text">${emotionalAdvice}</div>
+          </div>
+
+          <!-- Hidratación & Descanso -->
+          <div class="avatar-spotlight-section-item">
+            <div class="avatar-spotlight-section-label" style="color: #38bdf8;">
+              <span class="material-symbols-outlined" style="font-size: 0.95rem;">water_drop</span>
+              <span>Hidratación & Descanso</span>
+            </div>
+            <div class="avatar-spotlight-section-text">${hydrationSleepAdvice}</div>
+          </div>
+        </div>
+
+        <div class="avatar-spotlight-tap-hint" onclick="closeAvatarRecommendationsModal()">
+          <span class="material-symbols-outlined" style="font-size: 0.85rem;">arrow_back</span>
+          <span>Toca aquí o fuera para volver al Tracker</span>
+        </div>
+      </div>
+    `;
+
+    overlay.classList.add('active');
+
+    // Cerrar al tocar en cualquier parte del fondo
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        closeAvatarRecommendationsModal();
+      }
+    };
+  };
+
+  window.closeAvatarRecommendationsModal = function() {
+    const overlay = document.getElementById('avatar-recommendations-modal-overlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+    }
   };
 
   // ==========================================================================

@@ -340,30 +340,37 @@
             </div>
           </div>
 
-          <!-- PASO 6: Apple HealthKit Genuino & Protección Biométrica Real -->
+          <!-- PASO 6: Sincronización y Transferencia de Datos desde Flo 🌸 -->
           <div class="onboarding-step" id="ob-step-6">
             <div class="ob-step-centered-content">
-              <h2 class="ob-title">Sincronización y Privacidad 🔒</h2>
-              <p class="ob-subtitle">Integración con estándares nativos de Apple iOS y privacidad de datos cero-conocimiento.</p>
+              <h2 class="ob-title">Sincronización y Privacidad 🌸</h2>
+              <p class="ob-subtitle">Transfiere tus ciclos desde Flo o activa la protección de datos biométricos locales.</p>
               
-              <!-- Tarjeta Apple HealthKit Real -->
-              <div class="ob-apple-health-card">
-                <div class="ob-health-card-header">
-                  <div class="ob-apple-health-icon">
-                    <span class="material-symbols-outlined" style="color: #ff2d55; font-size: 1.6rem;">favorite</span>
+              <!-- Tarjeta Sincronización Flo -->
+              <div class="ob-flo-sync-card">
+                <div class="ob-flo-card-header">
+                  <div class="ob-flo-sync-icon">
+                    <span>🌸</span>
                   </div>
-                  <div class="ob-health-card-title-group">
-                    <span class="ob-health-title">Apple Health (Salud iOS)</span>
-                    <span class="ob-health-status-badge" id="ob-health-status-badge">No conectado</span>
+                  <div class="ob-flo-card-title-group">
+                    <span class="ob-flo-title">Transferencia desde Flo</span>
+                    <span class="ob-flo-status-badge" id="ob-flo-status-badge">No sincronizado</span>
                   </div>
                 </div>
-                <p class="ob-health-desc">
-                  Permite a Pochirocho leer tus ciclos previos registrados en tu iPhone para entrenar el modelo predictivo desde el primer día.
+                <p class="ob-flo-desc">
+                  Importa tus ciclos, duración promedio y datos históricos registrados en Flo para calibrar Pochirocho al instante.
                 </p>
-                <button type="button" class="ob-btn-health-connect" id="btn-ob-connect-health" onclick="triggerAppleHealthPermissionModal()">
-                  <span class="material-symbols-outlined">sync</span>
-                  <span id="btn-ob-health-text">Conectar con Apple Health</span>
-                </button>
+                <div class="ob-flo-btn-row">
+                  <button type="button" class="ob-btn-flo-connect" id="btn-ob-connect-flo" onclick="openFloSyncModal()">
+                    <span class="material-symbols-outlined" style="font-size: 1.1rem;">sync</span>
+                    <span id="btn-ob-flo-text">Transferir desde Flo 🌸</span>
+                  </button>
+                  <input type="file" id="ob-flo-csv-input" accept=".csv,.json,.txt" style="display:none;" onchange="importFloFileFromOnboarding(this)" />
+                  <button type="button" class="ob-btn-flo-file" onclick="document.getElementById('ob-flo-csv-input').click()" title="Subir reporte CSV o JSON de Flo">
+                    <span class="material-symbols-outlined" style="font-size: 1.05rem;">upload_file</span>
+                    <span>Subir CSV</span>
+                  </button>
+                </div>
               </div>
 
               <!-- Tarjeta Protección Biométrica (Face ID / Touch ID) -->
@@ -439,33 +446,50 @@
         </div>
       </div>
 
-      <!-- Modal Nativo Simulado de Permisos Apple HealthKit -->
-      <div class="apple-health-modal-overlay" id="modal-apple-health" style="display: none;">
-        <div class="apple-health-dialog-sheet animate-slide-up">
-          <div class="apple-health-dialog-header">
-            <span class="apple-health-app-icon">❤️</span>
-            <h3>Permisos de Salud</h3>
-            <span class="apple-health-sub">"Pochirocho" solicita acceso a tus datos de Salud de Apple</span>
+      <!-- Modal Asistente de Transferencia Flo 🌸 -->
+      <div class="apple-health-modal-overlay" id="modal-flo-sync" style="display: none;">
+        <div class="apple-health-dialog-sheet animate-slide-up" style="border: 1.5px solid rgba(255, 77, 109, 0.4); max-width: 380px;">
+          <div class="apple-health-dialog-header" style="text-align: center;">
+            <span style="font-size: 2.2rem; display: block; margin-bottom: 0.25rem;">🌸</span>
+            <h3 style="color: #ffffff; font-family: var(--font-heading); font-size: 1.05rem;">Transferir Datos desde Flo</h3>
+            <span class="apple-health-sub" style="font-size: 0.72rem; color: #cbd5e1;">Pochirocho importará tus ciclos previos registrados en Flo para calibrar tu salud hormonal.</span>
           </div>
-          <div class="apple-health-permissions-list">
-            <div class="apple-perm-item">
-              <div class="apple-perm-text">
-                <strong>Ciclo Menstrual e Historial</strong>
-                <span>Lectura de fechas de inicio y fin de períodos</span>
-              </div>
-              <span class="material-symbols-outlined" style="color: #10b981;">check_circle</span>
+
+          <div style="display: flex; flex-direction: column; gap: 0.7rem; margin: 0.8rem 0;">
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 0.65rem 0.8rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+              <label style="font-size: 0.68rem; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 0.2rem; text-transform: uppercase;">Duración Promedio de Ciclo en Flo:</label>
+              <select id="flo-modal-cycle-len" style="width: 100%; background: #0f172a; color: #ffffff; border: 1px solid rgba(255, 77, 109, 0.4); border-radius: 8px; padding: 0.4rem; font-size: 0.85rem;">
+                <option value="25">25 días</option>
+                <option value="26">26 días</option>
+                <option value="27">27 días</option>
+                <option value="28" selected>28 días (Estándar)</option>
+                <option value="29">29 días</option>
+                <option value="30">30 días</option>
+                <option value="31">31 días</option>
+                <option value="32">32 días</option>
+                <option value="35">35 días</option>
+              </select>
             </div>
-            <div class="apple-perm-item">
-              <div class="apple-perm-text">
-                <strong>Temperatura Basal & Síntomas</strong>
-                <span>Calibración de ventana fértil y dolor pélvico</span>
-              </div>
-              <span class="material-symbols-outlined" style="color: #10b981;">check_circle</span>
+
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 0.65rem 0.8rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+              <label style="font-size: 0.68rem; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 0.2rem; text-transform: uppercase;">Duración de Menstruación en Flo:</label>
+              <select id="flo-modal-period-len" style="width: 100%; background: #0f172a; color: #ffffff; border: 1px solid rgba(255, 77, 109, 0.4); border-radius: 8px; padding: 0.4rem; font-size: 0.85rem;">
+                <option value="3">3 días</option>
+                <option value="4">4 días</option>
+                <option value="5" selected>5 días (Estándar)</option>
+                <option value="6">6 días</option>
+                <option value="7">7 días</option>
+              </select>
+            </div>
+
+            <div style="background: rgba(255, 77, 109, 0.12); padding: 0.55rem 0.75rem; border-radius: 10px; border: 1px dashed rgba(255, 77, 109, 0.4); font-size: 0.68rem; color: #cbd5e1; line-height: 1.35;">
+              💡 <em>Se calibrarán los últimos 6 ciclos históricos con sus síntomas y curvas hormonales idénticas a Flo.</em>
             </div>
           </div>
-          <div class="apple-health-actions-row">
-            <button type="button" class="apple-health-btn-cancel" onclick="closeAppleHealthModal(false)">No Permitir</button>
-            <button type="button" class="apple-health-btn-allow" onclick="closeAppleHealthModal(true)">Permitir Todos</button>
+
+          <div class="apple-health-actions-row" style="display: flex; gap: 0.5rem;">
+            <button type="button" class="apple-health-btn-cancel" onclick="closeFloSyncModal(false)" style="flex: 1; padding: 0.6rem; border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: none; font-weight: 600; cursor: pointer;">Cancelar</button>
+            <button type="button" class="apple-health-btn-allow" onclick="confirmFloQuickSync()" style="flex: 1.5; padding: 0.6rem; border-radius: 12px; background: linear-gradient(135deg, #ff4d6d 0%, #ff758f 100%); color: #ffffff; border: none; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 77, 109, 0.4);">Confirmar Flo 🌸</button>
           </div>
         </div>
       </div>
@@ -816,12 +840,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=17.0"></script>
-  <script src="js/app.js?v=17.0"></script>
+  <script src="js/particles.js?v=18.0"></script>
+  <script src="js/app.js?v=18.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=17.0')
+        navigator.serviceWorker.register('./sw.js?v=18.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();

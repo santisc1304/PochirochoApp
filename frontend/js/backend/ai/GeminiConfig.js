@@ -81,13 +81,17 @@ export const GeminiConfig = {
       }
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
-    });
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId));
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -171,6 +171,9 @@ body {
 #view-tracker.app-view {
   transform: none;
   padding: max(0.85rem, env(safe-area-inset-top, 0px)) 1.15rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.35rem, 1.5vh, 0.85rem);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -5713,15 +5716,18 @@ input:checked + .settings-slider:before {
   box-shadow: 0 0 12px var(--gold-glow);
 }
 
-/* Step 6: Apple HealthKit & Biometrics */
+/* Step 6: Flo Sync & Biometrics */
+.ob-flo-sync-card,
 .ob-apple-health-card {
-  background: rgba(255, 45, 85, 0.06);
-  border: 1.5px solid rgba(255, 45, 85, 0.35);
+  background: rgba(255, 77, 109, 0.08);
+  border: 1.5px solid rgba(255, 77, 109, 0.38);
   border-radius: 20px;
   padding: 0.95rem;
   margin-bottom: 0.85rem;
+  box-shadow: 0 8px 25px rgba(255, 77, 109, 0.1);
 }
 
+.ob-flo-card-header,
 .ob-health-card-header {
   display: flex;
   align-items: center;
@@ -5729,16 +5735,19 @@ input:checked + .settings-slider:before {
   margin-bottom: 0.4rem;
 }
 
+.ob-flo-sync-icon,
 .ob-apple-health-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
-  background: rgba(255, 45, 85, 0.15);
+  background: rgba(255, 77, 109, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.25rem;
 }
 
+.ob-flo-card-title-group,
 .ob-health-card-title-group {
   display: flex;
   align-items: center;
@@ -5747,36 +5756,46 @@ input:checked + .settings-slider:before {
   justify-content: space-between;
 }
 
+.ob-flo-title,
 .ob-health-title {
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: 800;
+  font-size: 0.92rem;
   color: #ffffff;
+  font-family: var(--font-heading);
 }
 
+.ob-flo-status-badge,
 .ob-health-status-badge {
   font-size: 0.65rem;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 8px;
+  background: rgba(255, 77, 109, 0.18);
+  padding: 3px 9px;
   border-radius: 10px;
-  color: #cbd5e1;
-  font-weight: 600;
+  color: #ff758f;
+  font-weight: 700;
 }
 
+.ob-flo-desc,
 .ob-health-desc {
-  font-size: 0.7rem;
+  font-size: 0.71rem;
   color: #cbd5e1;
-  line-height: 1.35;
+  line-height: 1.38;
   margin-bottom: 0.75rem;
 }
 
+.ob-flo-btn-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ob-btn-flo-connect,
 .ob-btn-health-connect {
-  width: 100%;
-  background: #ff2d55;
+  flex: 1;
+  background: linear-gradient(135deg, #ff4d6d 0%, #ff758f 100%);
   color: #ffffff;
   border: none;
   border-radius: 14px;
-  padding: 0.65rem;
-  font-weight: 700;
+  padding: 0.65rem 0.85rem;
+  font-weight: 800;
   font-size: 0.82rem;
   cursor: pointer;
   display: flex;
@@ -5784,7 +5803,32 @@ input:checked + .settings-slider:before {
   justify-content: center;
   gap: 0.45rem;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(255, 45, 85, 0.35);
+  box-shadow: 0 4px 15px rgba(255, 77, 109, 0.35);
+}
+
+.ob-btn-flo-connect:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 77, 109, 0.5);
+}
+
+.ob-btn-flo-file {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+}
+
+.ob-btn-flo-file:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
 .ob-biometric-card {

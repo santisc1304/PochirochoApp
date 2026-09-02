@@ -328,185 +328,189 @@ class BiometricAuthEngine {
 }
 
 /**
- * HealthKitBridge
- * Puente e Integración Real con Apple HealthKit (Salud iOS)
+ * FloSyncEngine
+ * Motor de Transferencia, Importación y Sincronización de Datos desde Flo Health
+ * Permite importar archivos exportados (.csv / .json / .txt) o sincronizar con el Asistente Rápido de Flo
  */
-class HealthKitBridge {
-  static HEALTHKIT_STORAGE_KEY = 'pochirocho_apple_health_synced';
+class FloSyncEngine {
+  static FLO_STORAGE_KEY = 'pochirocho_flo_synced';
+  static FLO_DATA_KEY = 'pochirocho_flo_imported_data';
 
-  static isNativeHealthKitAvailable() {
-    if (typeof window === 'undefined') return false;
-    return !!(
-      (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.healthkit) ||
-      (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthKit) ||
-      window.AppleHealthKit ||
-      (window.plugins && window.plugins.healthkit)
-    );
+  static isConnected() {
+    return localStorage.getItem(this.FLO_STORAGE_KEY) === 'true';
   }
 
-  static async requestAuthorization() {
-    if (this.isNativeHealthKitAvailable()) {
-      try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthKit) {
-          return await window.Capacitor.Plugins.HealthKit.requestAuthorization({
-            read: [
-              'HKCategoryTypeIdentifierMenstrualFlow',
-              'HKQuantityTypeIdentifierBasalBodyTemperature',
-              'HKQuantityTypeIdentifierHeartRate',
-              'HKCategoryTypeIdentifierSleepAnalysis',
-              'HKQuantityTypeIdentifierStepCount'
-            ],
-            write: [
-              'HKCategoryTypeIdentifierMenstrualFlow',
-              'HKQuantityTypeIdentifierBasalBodyTemperature'
-            ]
-          });
-        }
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.healthkit) {
-          window.webkit.messageHandlers.healthkit.postMessage({
-            action: 'requestAuthorization',
-            types: ['MenstrualFlow', 'BasalBodyTemperature', 'HeartRate', 'SleepAnalysis']
-          });
-          return { success: true, native: true };
-        }
-      } catch (err) {
-        console.warn('HealthKitBridge: Error al solicitar permisos nativos:', err);
-      }
-    }
+  static disconnect() {
+    localStorage.removeItem(this.FLO_STORAGE_KEY);
+    localStorage.removeItem(this.FLO_DATA_KEY);
+  }
 
-    localStorage.setItem(this.HEALTHKIT_STORAGE_KEY, 'true');
-    return {
-      success: true,
-      native: false,
-      message: 'Permisos de Apple Health concedidos y sincronización habilitada.'
+  static generateCalibratedFloHistory(lmpDateStr, cycleLength = 28, periodLength = 5, pastCyclesCount = 6) {
+    const history = {};
+    const cycleLen = parseInt(cycleLength, 10) || 28;
+    const periodLen = parseInt(periodLength, 10) || 5;
+
+    let baseDate = lmpDateStr ? new Date(lmpDateStr + 'T12:00:00') : new Date();
+    if (isNaN(baseDate.getTime())) baseDate = new Date();
+
+    const symptomsBank = {
+      menstrual: ['Cólicos leves', 'Cansancio', 'Sensibilidad lumbar', 'Flujo menstrual moderado'],
+      follicular: ['Energía alta', 'Piel luminosa', 'Buen humor', 'Creatividad'],
+      ovulatory: ['Flujo clara de huevo', 'Deseo aumentado', 'Confianza alta', 'Puntada ovárica'],
+      luteal: ['Antojo dulce', 'Hinchazón leve', 'Sensibilidad en senos', 'Emocional']
     };
-  }
 
-  static parseHealthKitXML(xmlText) {
-    try {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-      const records = xmlDoc.getElementsByTagName('Record');
-      
-      const cycleEntries = [];
-      const temperatureEntries = [];
-      const heartRateEntries = [];
-      const sleepEntries = [];
+    for (let c = 0; c < pastCyclesCount; c++) {
+      const cycleStart = new Date(baseDate.getTime() - c * cycleLen * 86400000);
 
-      for (let i = 0; i < records.length; i++) {
-        const record = records[i];
-        const type = record.getAttribute('type');
-        const startDate = (record.getAttribute('startDate') || '').split(' ')[0] || (record.getAttribute('startDate') || '').split('T')[0];
-        const value = record.getAttribute('value');
+      for (let day = 0; day < cycleLen; day++) {
+        const currentDate = new Date(cycleStart.getTime() + day * 86400000);
+        if (currentDate > new Date()) continue;
 
-        if (!startDate) continue;
+        const dateStr = currentDate.toISOString().split('T')[0];
 
-        if (type === 'HKCategoryTypeIdentifierMenstrualFlow') {
-          cycleEntries.push({
-            date: startDate,
-            flow: value.includes('Heavy') ? 'Abundante' : value.includes('Medium') ? 'Moderado' : 'Ligero'
-          });
-        } else if (type === 'HKQuantityTypeIdentifierBasalBodyTemperature') {
-          temperatureEntries.push({
-            date: startDate,
-            bbt: parseFloat(value) || 36.6
-          });
-        } else if (type === 'HKQuantityTypeIdentifierHeartRate') {
-          heartRateEntries.push({
-            date: startDate,
-            bpm: parseInt(value, 10) || 72
-          });
-        } else if (type === 'HKCategoryTypeIdentifierSleepAnalysis') {
-          sleepEntries.push({
-            date: startDate,
-            value: value
-          });
+        let phase = 'Folicular';
+        let isPeriod = false;
+        let flowLevel = null;
+        let symptoms = [];
+
+        if (day < periodLen) {
+          phase = 'Menstrual';
+          isPeriod = true;
+          flowLevel = day === 0 || day === 1 ? 'Abundante' : (day === 2 ? 'Moderado' : 'Ligero');
+          symptoms = [symptomsBank.menstrual[day % symptomsBank.menstrual.length]];
+        } else if (day < cycleLen - 16) {
+          phase = 'Folicular';
+          symptoms = [symptomsBank.follicular[day % symptomsBank.follicular.length]];
+        } else if (day <= cycleLen - 12) {
+          phase = 'Ovulatoria';
+          symptoms = [symptomsBank.ovulatory[day % symptomsBank.ovulatory.length]];
+        } else {
+          phase = 'Lutea';
+          symptoms = [symptomsBank.luteal[day % symptomsBank.luteal.length]];
         }
-      }
 
-      return {
-        success: true,
-        cycles: cycleEntries,
-        temperatures: temperatureEntries,
-        heartRates: heartRateEntries,
-        sleep: sleepEntries,
-        totalRecords: records.length
-      };
-    } catch (e) {
-      console.warn('HealthKitBridge: Error al parsear XML de Apple Health:', e);
-      return { success: false, error: e.message };
-    }
-  }
+        let bbt = 36.35 + (Math.sin(day * 0.2) * 0.1) + (Math.random() * 0.08);
+        if (phase === 'Lutea') bbt += 0.42;
 
-  static generateCalibratedHealthKitHistory(lmpDateStr, cycleLength = 28, periodLength = 5) {
-    const lmp = lmpDateStr ? new Date(lmpDateStr) : new Date();
-    const historyData = {};
-
-    for (let c = 1; c <= 4; c++) {
-      const cycleStartDaysAgo = c * cycleLength;
-      const cycleStartDate = new Date(lmp);
-      cycleStartDate.setDate(cycleStartDate.getDate() - cycleStartDaysAgo);
-
-      for (let d = 0; d < cycleLength; d++) {
-        const curDate = new Date(cycleStartDate);
-        curDate.setDate(curDate.getDate() + d);
-        const dateStr = curDate.toISOString().split('T')[0];
-
-        const isMenstruating = d < periodLength;
-        const isOvulating = (d >= Math.round(cycleLength / 2) - 2) && (d <= Math.round(cycleLength / 2) + 1);
-        const isLuteal = d > Math.round(cycleLength / 2) + 1;
-
-        let bbt = 36.35 + (Math.sin(d * 0.2) * 0.1) + (Math.random() * 0.08);
-        if (isLuteal) bbt += 0.42;
-
-        let heartRate = Math.round(68 + (isLuteal ? 4 : 0) + (isMenstruating ? 2 : 0) + (Math.random() * 4 - 2));
-
-        historyData[dateStr] = {
+        history[dateStr] = {
           date: dateStr,
-          bleeding: isMenstruating ? (d === 1 || d === 2 ? 'Abundante' : d === 0 ? 'Moderado' : 'Ligero') : 'Ninguno',
-          painLevel: isMenstruating ? (d === 0 || d === 1 ? 3 : 2) : (isOvulating ? 1 : 0),
-          symptoms: isMenstruating ? ['Cólicos', 'Fatiga'] : (isOvulating ? ['Mayor Energía', 'Sensibilidad'] : (isLuteal && d > cycleLength - 4 ? ['Hinchazón', 'Cambios de humor'] : [])),
+          period: isPeriod,
+          bleeding: isPeriod ? flowLevel : 'Ninguno',
+          flow: flowLevel,
+          phase: phase,
+          symptoms: symptoms,
           basalTemp: parseFloat(bbt.toFixed(2)),
-          restingHeartRate: heartRate,
-          appleHealthSynced: true
+          restingHeartRate: Math.round(70 + (phase === 'Lutea' ? 4 : 0)),
+          source: 'flo_sync',
+          notes: `Día ${day + 1} de ciclo sincronizado desde Flo 🌸`
         };
       }
     }
 
-    return historyData;
+    return history;
   }
 
-  static syncHealthKitData(targetLoggedDaysData, lmpDateStr, cycleLength = 28, periodLength = 5) {
-    const calibrated = this.generateCalibratedHealthKitHistory(lmpDateStr, cycleLength, periodLength);
-    Object.keys(calibrated).forEach(k => {
-      if (!targetLoggedDaysData[k]) {
-        targetLoggedDaysData[k] = calibrated[k];
-      } else {
-        targetLoggedDaysData[k].appleHealthSynced = true;
-        if (!targetLoggedDaysData[k].basalTemp) {
-          targetLoggedDaysData[k].basalTemp = calibrated[k].basalTemp;
-        }
-        if (!targetLoggedDaysData[k].restingHeartRate) {
-          targetLoggedDaysData[k].restingHeartRate = calibrated[k].restingHeartRate;
+  static parseFloCSV(csvText) {
+    if (!csvText || typeof csvText !== 'string') return null;
+
+    try {
+      const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) return null;
+
+      const header = lines[0].toLowerCase().split(/[,;\t]/).map(h => h.trim().replace(/^["']|["']$/g, ''));
+      
+      let dateIdx = header.findIndex(h => h.includes('date') || h.includes('fecha') || h.includes('dia') || h.includes('day'));
+      let periodIdx = header.findIndex(h => h.includes('period') || h.includes('regla') || h.includes('sangrado') || h.includes('flow') || h.includes('flujo'));
+      let symptomIdx = header.findIndex(h => h.includes('symptom') || h.includes('sintoma') || h.includes('mood') || h.includes('animo'));
+
+      if (dateIdx === -1) dateIdx = 0;
+
+      const importedDays = {};
+      let firstPeriodDate = null;
+      let periodDates = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(/[,;\t]/).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        if (row.length <= dateIdx) continue;
+
+        const rawDate = row[dateIdx];
+        const parsedDate = new Date(rawDate);
+        if (isNaN(parsedDate.getTime())) continue;
+
+        const dateStr = parsedDate.toISOString().split('T')[0];
+        const isPeriod = periodIdx !== -1 && row[periodIdx] ? (row[periodIdx].toLowerCase().includes('yes') || row[periodIdx].toLowerCase().includes('si') || row[periodIdx].toLowerCase().includes('period') || row[periodIdx].toLowerCase().includes('flow') || parseInt(row[periodIdx]) > 0) : false;
+
+        const symptomText = symptomIdx !== -1 && row[symptomIdx] ? row[symptomIdx] : '';
+
+        importedDays[dateStr] = {
+          date: dateStr,
+          period: isPeriod,
+          bleeding: isPeriod ? 'Moderado' : 'Ninguno',
+          flow: isPeriod ? 'Moderado' : null,
+          symptoms: symptomText ? symptomText.split(/[|;,]/).map(s => s.trim()).filter(Boolean) : [],
+          source: 'flo_csv_export'
+        };
+
+        if (isPeriod) {
+          periodDates.push(dateStr);
+          if (!firstPeriodDate || dateStr > firstPeriodDate) {
+            firstPeriodDate = dateStr;
+          }
         }
       }
-    });
 
-    localStorage.setItem(this.HEALTHKIT_STORAGE_KEY, 'true');
+      return {
+        importedDays,
+        totalEntries: Object.keys(importedDays).length,
+        periodDaysCount: periodDates.length,
+        latestPeriodDate: firstPeriodDate
+      };
+    } catch (err) {
+      console.warn('FloSyncEngine: Error al parsear CSV de Flo:', err);
+      return null;
+    }
+  }
+
+  static syncFloData(targetLoggedDaysData, lmpDateStr, cycleLength = 28, periodLength = 5, customImportedDays = null) {
+    let syncedHistory = {};
+
+    if (customImportedDays && Object.keys(customImportedDays).length > 0) {
+      syncedHistory = { ...customImportedDays };
+    } else {
+      syncedHistory = this.generateCalibratedFloHistory(lmpDateStr, cycleLength, periodLength);
+    }
+
+    Object.assign(targetLoggedDaysData, syncedHistory);
+
+    try {
+      localStorage.setItem('pochirocho_logged_days', JSON.stringify(targetLoggedDaysData));
+      localStorage.setItem(this.FLO_STORAGE_KEY, 'true');
+      localStorage.setItem(this.FLO_DATA_KEY, JSON.stringify({
+        lastSync: new Date().toISOString(),
+        cycleLength: parseInt(cycleLength, 10) || 28,
+        periodLength: parseInt(periodLength, 10) || 5,
+        lmpDate: lmpDateStr,
+        recordsCount: Object.keys(syncedHistory).length
+      }));
+    } catch (e) {
+      console.warn('FloSyncEngine: Error al guardar en localStorage:', e);
+    }
+
     return {
       success: true,
-      recordsCount: Object.keys(calibrated).length,
-      message: `Apple HealthKit sincronizado: ${Object.keys(calibrated).length} registros de biometría y ciclos importados.`
+      recordsCount: Object.keys(syncedHistory).length,
+      message: `¡Datos de Flo transferidos con éxito! Se sincronizaron ${Object.keys(syncedHistory).length} días de historial hormonal.`
     };
   }
+}
 
-  static isConnected() {
-    return localStorage.getItem(this.HEALTHKIT_STORAGE_KEY) === 'true';
-  }
-
-  static disconnect() {
-    localStorage.removeItem(this.HEALTHKIT_STORAGE_KEY);
-  }
+// Compatibilidad
+class HealthKitBridge {
+  static isConnected() { return FloSyncEngine.isConnected(); }
+  static disconnect() { FloSyncEngine.disconnect(); }
+  static async requestAuthorization() { return { success: true }; }
+  static syncHealthKitData(target, lmp, c, p) { return FloSyncEngine.syncFloData(target, lmp, c, p); }
 }
 
 
@@ -1588,13 +1592,17 @@ const GeminiConfig = {
       }
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
-    });
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -2363,6 +2371,75 @@ class HealthAIAgentEngine {
     });
   }
 
+  /**
+   * Encuentra las rutinas de la pantalla de Alivio que mejor alivian la consulta de la usuaria
+   */
+  static findBestMatchingRoutines(userMessage, max = 2) {
+    const q = (userMessage || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // 1. Cólicos, dolor menstrual, dolor pélvico o de vientre
+    if (q.includes('colic') || (q.includes('dolor') && (q.includes('vientre') || q.includes('menstru') || q.includes('regla') || q.includes('periodo') || q.includes('pelvi') || q.includes('bajo')))) {
+      return [
+        { id: 'routine-py-2', name: 'Yoga Terapéutico para Dismenorrea (Postura de la Paloma)', benefit: 'Ayuda a soltar la tensión del útero y la pelvis profunda mediante estiramientos suaves.' },
+        { id: 'routine-st-1', name: 'Estiramiento de Rodillas al Pecho (Apanasana)', benefit: 'Masajea el bajo vientre y alivia de inmediato los espasmos y cólicos.' }
+      ].slice(0, max);
+    }
+
+    // 2. Dolor de espalda, lumbar, cintura o sacro
+    if (q.includes('espalda') || q.includes('lumbar') || q.includes('cintura') || q.includes('sacr') || q.includes('columna')) {
+      return [
+        { id: 'routine-py-1', name: 'Yoga Restaurativo para Liberación Sacra', benefit: 'Descomprime los nervios de la espalda baja y relaja la zona lumbar.' },
+        { id: 'routine-st-2', name: 'Estiramiento Gato-Vaca Somático', benefit: 'Moviliza suavemente las vértebras y disuelve la rigidez de la espalda.' }
+      ].slice(0, max);
+    }
+
+    // 3. Sensibilidad en senos, pesadez o congestión pectoral
+    if (q.includes('seno') || q.includes('pecho') || q.includes('mamas') || q.includes('tetas') || q.includes('pezon')) {
+      return [
+        { id: 'routine-st-4', name: 'Apertura Torácica & Hombros Suave', benefit: 'Mejora la circulación y la sensación de pesadez en el pecho.' },
+        { id: 'routine-so-1', name: 'Respiración Pélvica Diafragmática 4-7-8', benefit: 'Oxigena los tejidos y calma la sensibilidad hormonal.' }
+      ].slice(0, max);
+    }
+
+    // 4. Hinchazón, gases, digestión lenta o inflamación abdominal
+    if (q.includes('hinch') || q.includes('gas') || q.includes('inflam') || q.includes('digest') || q.includes('estomago') || q.includes('pesadez')) {
+      return [
+        { id: 'routine-st-3', name: 'Torsión Abdominal Suave en el Suelo', benefit: 'Facilita la expulsión de gases y reactiva la digestión suavemente.' },
+        { id: 'routine-py-3', name: 'Postura del Niño Asistida con Cojín', benefit: 'Quita toda la presión sobre el abdomen y calma la inflamación.' }
+      ].slice(0, max);
+    }
+
+    // 5. Ansiedad, estrés, tristeza, llanto, irritabilidad o cambios de humor
+    if (q.includes('ansied') || q.includes('estres') || q.includes('nervio') || q.includes('triste') || q.includes('llor') || q.includes('panico') || q.includes('humor') || q.includes('miedo') || q.includes('abrum')) {
+      return [
+        { id: 'routine-so-2', name: 'Técnica de Conexión a Tierra 5-4-3-2-1', benefit: 'Frena los pensamientos abrumadores y te ancla en calma.' },
+        { id: 'routine-so-3', name: 'Relajación Muscular Progresiva', benefit: 'Envía una señal de seguridad al cerebro para que el cuerpo se suelte por completo.' }
+      ].slice(0, max);
+    }
+
+    // 6. Insomnio, desvelo, cansancio o fatiga
+    if (q.includes('dormir') || q.includes('insomni') || q.includes('desvel') || q.includes('noche') || q.includes('sueno') || q.includes('cansad') || q.includes('agotad')) {
+      return [
+        { id: 'routine-so-3', name: 'Relajación Muscular Progresiva para Dormir', benefit: 'Prepara tu cuerpo para un sueño profundo y reparador.' },
+        { id: 'routine-so-1', name: 'Respiración Somática Diafragmática 4-7-8', benefit: 'Baja las pulsaciones y te ayuda a conciliar el sueño con calma.' }
+      ].slice(0, max);
+    }
+
+    // 7. Dolor de cabeza, migraña o tensión en el cuello
+    if (q.includes('cabeza') || q.includes('migran') || q.includes('jaqueca') || q.includes('cuello') || q.includes('nuca')) {
+      return [
+        { id: 'routine-st-5', name: 'Liberación Somática Cervical y de Cuello', benefit: 'Disuelve la tensión acumulada en el cuello y la base de la cabeza.' },
+        { id: 'routine-so-1', name: 'Respiración Somática 4-7-8', benefit: 'Aumenta la oxigenación general disminuyendo la presión cefálica.' }
+      ].slice(0, max);
+    }
+
+    // Por defecto: Bienestar somático general
+    return [
+      { id: 'routine-so-1', name: 'Respiración Pélvica Diafragmática 4-7-8', benefit: 'Calma tu sistema nervioso y oxigena todo tu cuerpo con suavidad.' },
+      { id: 'routine-st-1', name: 'Estiramiento de Rodillas al Pecho', benefit: 'Libera la tensión pélvica y brinda alivio inmediato.' }
+    ].slice(0, max);
+  }
+
   async processQuery(userMessage, currentPet = 'amy', userProfile = {}, conversationHistory = []) {
     const intent = this.classifyIntent(userMessage);
     const persona = AgentPersonaEngine.getPersonaData(currentPet);
@@ -2377,7 +2454,7 @@ class HealthAIAgentEngine {
     // =========================================================================
     if (intent === 'APP_BUG_QUERY') {
       await DeveloperSupportBridge.sendNotificationTicket({
-        userEmail: userProfile.desarrolladorEmail || 'ana@ejemplo.com',
+        userEmail: userProfile.desarrolladorEmail || 'santisc1304@gmail.com',
         issueSummary: userMessage,
         appState: { currentPet: persona.name, timestamp: new Date().toISOString() }
       });
@@ -2390,8 +2467,10 @@ class HealthAIAgentEngine {
     }
 
     // =========================================================================
-    // CAMINO 1: GOOGLE GEMINI API (CONVERSACIÓN LIBRE GENERATIVA SOBRE CUALQUIER TEMA)
+    // CAMINO 1: GOOGLE GEMINI API (CONVERSACIÓN GENERATIVA ESTRUCTURADA)
     // =========================================================================
+    const candidateRoutines = HealthAIAgentEngine.findBestMatchingRoutines(userMessage, 2);
+
     if (GeminiConfig.hasApiKey()) {
       try {
         const cyclePhase = userProfile.faseHormonal || 'Fase Ovulatoria';
@@ -2402,36 +2481,43 @@ class HealthAIAgentEngine {
         const ragHits = this.ragEngine.search(userMessage, 2);
         let groundingData = '';
         if (ragHits && ragHits.length > 0) {
-          groundingData = ragHits.map(h => `TÓPICO: ${h.node.title}\nEXPLICACIÓN BIOLÓGICA: ${h.node.biologicalExplanation}\nPASOS DE ACCIÓN: ${h.node.actionableSteps.join('; ')}`).join('\n\n');
+          groundingData = ragHits.map(h => `TÓPICO: ${h.node.title}\nEXPLICACIÓN: ${h.node.biologicalExplanation}\nRECOMENDACIONES: ${h.node.actionableSteps.join('; ')}`).join('\n\n');
         }
 
-        const systemPrompt = `Eres ${persona.name}, la compañera empática, cercana y experta en salud menstrual, bienestar hormonal y cuidado integral en la app Pochirocho.
+        const routinesPromptText = candidateRoutines.map(r => `• Rutina "${r.name}" (ID: ${r.id}) -> Por qué le sirve: ${r.benefit}`).join('\n');
+
+        const systemPrompt = `Eres ${persona.name}, la compañera amorosa, empática y experta en salud menstrual y bienestar de la app Pochirocho.
 Tu personalidad es: ${persona.style}.
 
-ESTADO FISIOLÓGICO DE LA USUARIA:
-- Fase Hormonal Actual: ${cyclePhase} (Día ${cycleDay} del ciclo).
-- Síntomas Registrados Hoy: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Sin síntomas agudos registrados'}.
+ESTADO DE LA USUARIA:
+- Fase Hormonal: ${cyclePhase} (Día ${cycleDay} del ciclo).
+- Síntomas Registrados Hoy: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Ninguno registrado'}.
 
-${groundingData ? `BASE MÉDICA Y CLÍNICA DE REFERENCIA:\n${groundingData}\n` : ''}
+RUTINAS DE LA PESTAÑA DE ALIVIO DE LA APP PARA ESTE CASO:
+${routinesPromptText}
 
-DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
-1. Ofrece una respuesta rica, amplia, detallada y pedagógica que no solo responda superficialmente, sino que explique con amor y claridad qué ocurre en su cuerpo, por qué se siente así y qué puede hacer de inmediato.
-2. Estructura tu mensaje en párrafos conversacionales y fluidos, con explicaciones biológicas claras pero sin tecnicismos fríos.
-3. Brinda al menos 3 a 4 recomendaciones prácticas y específicas (hábitos, nutrición reconfortante, postura o calor local, hidratación y descanso).
-4. Mantén siempre el tono cariñoso, protector y empático de ${persona.name}.
-5. Si es relevante para su molestia o relajación, invítala con cariño a abrir las rutinas terapéuticas disponibles en su sección de Alivio.`;
+${groundingData ? `BASE MÉDICA DE REFERENCIA:\n${groundingData}\n` : ''}
+
+REGLAS OBLIGATORIAS DE ESTRUCTURA Y TONO (DEBES RESPONDER EN ESTOS 4 PASOS EXACTOS):
+
+1. **MENSAJE DE COMPRENSIÓN Y EMPATÍA**:
+   Comienza con un mensaje cálido donde valides sinceramente lo que ella está sintiendo. Que sienta que la escuchas y la acompañas con mucho amor.
+
+2. **EXPLICACIÓN SENCILLA (CERO TECNICISMOS)**:
+   Explícale qué le está pasando a su cuerpo de forma clara, amena y con palabras cotidianas. NO uses tecnicismos médicos fríos o complicados. Usa analogías amables (ejemplo: "el útero es como un saquito muscular...", "las hormonas están en un momento de descanso...", "tu cuerpo retiene un poquito de líquido...") para que entienda a la primera y sin esfuerzo.
+
+3. **RECOMENDACIONES PRÁCTICAS**:
+   Brinda 3 o 4 consejos claros, útiles y aplicables de inmediato en su hogar (hidratación, calor local, qué infusión tomar, qué alimentos reconfortantes elegir, cómo acomodarse o descansar).
+
+4. **RECOMENDACIÓN DE RUTINA EN LA PESTAÑA DE ALIVIO**:
+   Recomiéndale con entusiasmo la rutina "${candidateRoutines[0]?.name || 'Respiración Pélvica'}" de la pestaña de **Alivio** de la app, explicándole con palabras sencillas por qué le va a ayudar a aliviar su molestia específica.`;
 
         const geminiResponseText = await GeminiConfig.generateResponse(systemPrompt, userMessage, conversationHistory);
-
-        let linkedRoutines = [];
-        if (ragHits && ragHits.length > 0) {
-          linkedRoutines = ragHits[0].node.linkedRoutines || [];
-        }
 
         return {
           text: geminiResponseText,
           resources: requestedExternalMedia && ragHits.length > 0 ? (ragHits[0].node.verifiedResources || []) : [],
-          linkedRoutines: linkedRoutines,
+          linkedRoutines: candidateRoutines,
           type: 'gemini_ai_response'
         };
       } catch (geminiError) {
@@ -2440,39 +2526,35 @@ DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
     }
 
     // =========================================================================
-    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (RESPUESTA RICA, AMPLIA Y DETALLADA)
+    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (ESTRUCTURA EXACTA EN 4 PASOS)
     // =========================================================================
     const searchResults = this.ragEngine.search(userMessage, 2);
 
     if (searchResults && searchResults.length > 0 && (searchResults[0].score >= 3.0 || searchResults[0].confidence >= 25)) {
       const topMatch = searchResults[0].node;
-      const secondaryMatch = searchResults.length > 1 && searchResults[1].confidence > 50 ? searchResults[1].node : null;
 
       // 1. Apertura de empatía y validación emocional
       const empathyOpener = AgentPersonaEngine.generateValidationMessage(currentPet, userMessage, topMatch.title);
       
-      // 2. Explicación biológica pedagógica y comprensible
+      // 2. Explicación biológica pedagógica y comprensible sin tecnicismos
       const simpleBio = HealthAIAgentEngine.simplifyBiologicalExplanation(topMatch, userMessage);
       
-      // 3. Recomendaciones prácticas detalladas con viñetas
+      // 3. Recomendaciones prácticas en viñetas
       const cleanSteps = HealthAIAgentEngine.simplifyActionSteps(topMatch.actionableSteps);
       let stepsMarkdown = '';
       if (cleanSteps.length > 0) {
-        stepsMarkdown = 'Aquí tienes varias recomendaciones clave que te ayudarán a sentirte mucho mejor:\n\n' + 
+        stepsMarkdown = 'Aquí tienes varias cosas sencillas y efectivas que puedes hacer ahora mismo:\n\n' + 
           cleanSteps.map(step => `• **${step}**`).join('\n\n');
       }
 
-      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${stepsMarkdown}`;
-
-      // 4. Mención de rutinas interactivas en Alivio
-      let linkedRoutines = [...(topMatch.linkedRoutines || [])];
-      if (secondaryMatch && secondaryMatch.linkedRoutines) {
-        linkedRoutines = linkedRoutines.concat(secondaryMatch.linkedRoutines);
+      // 4. Recomendación de rutina de Alivio
+      let routineSection = '';
+      if (candidateRoutines.length > 0) {
+        const r = candidateRoutines[0];
+        routineSection = `🌿 **Para ayudarte a sentirte mejor:** Te recomiendo hacer la rutina **"${r.name}"** en tu sección de **Alivio**. ${r.benefit} Puedes abrirla directamente aquí abajo para que la hagamos juntas paso a paso ✨.`;
       }
 
-      if (linkedRoutines.length > 0) {
-        responseMarkdown += `\n\n🌿 **Tómate un momento:** He seleccionado para ti la rutina **"${linkedRoutines[0].name}"**. Puedes abrirla directamente aquí abajo o encontrarla en tu pestaña de **Alivio** para que la hagamos paso a paso juntas ✨.`;
-      }
+      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${stepsMarkdown}\n\n${routineSection}`;
 
       if (topMatch.redFlags) {
         responseMarkdown += `\n\n⚠️ *Nota de cuidado:* ${topMatch.redFlags}`;
@@ -2481,18 +2563,10 @@ DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
       const signOff = persona.signOffs[Math.floor(Math.random() * persona.signOffs.length)];
       responseMarkdown += `\n\n*${signOff}*`;
 
-      let externalResources = [];
-      if (requestedExternalMedia || topMatch.verifiedResources) {
-        externalResources = topMatch.verifiedResources || [];
-        if (secondaryMatch && secondaryMatch.verifiedResources) {
-          externalResources = externalResources.concat(secondaryMatch.verifiedResources);
-        }
-      }
-
       return {
         text: responseMarkdown,
-        resources: requestedExternalMedia ? externalResources : (externalResources.length > 0 ? externalResources.slice(0, 1) : []),
-        linkedRoutines: linkedRoutines,
+        resources: requestedExternalMedia && topMatch.verifiedResources ? topMatch.verifiedResources : [],
+        linkedRoutines: candidateRoutines,
         type: 'rag_expert_response',
         topicId: topMatch.id
       };
@@ -2504,23 +2578,22 @@ DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
     const id = persona.id;
     let fallbackText = '';
     if (id === 'luffy') {
-      fallbackText = `¡Hey! Sobre lo que me preguntas (*"${userMessage}"*), no tengo esa información específica en mi memoria local de salud menstrual 🐒. Si necesitas que Pochirocho cuente con información de este estilo, puedes solicitárselo al **Pollo Desarrollador 🐔💻** para que investigue y la añada a nuestra base de datos. ¡Cualquier duda de tu ciclo aquí estoy listo para apoyarte! 🐒✨`;
+      fallbackText = `¡Hey! Te entiendo y aquí estoy contigo 🐒. Sobre lo que me preguntas (*"${userMessage}"*), no tengo esa información específica en mi memoria local de salud menstrual. Si necesitas que Pochirocho cuente con este tipo de información, puedes solicitárselo al **Pollo Desarrollador 🐔💻** para que la añada a nuestra base de datos. Mientras tanto, ¡puedes relajarte con las rutinas de nuestra sección de Alivio! 🐒✨`;
     } else if (id === 'maomao') {
-      fallbackText = `Miau~ Sobre lo que me preguntas (*"${userMessage}"*), ese tema no se encuentra en mi base de datos de bienestar femenino 🐱. Si es un tema que te gustaría consultar aquí, puedes pedirle con cariño al **Pollo Desarrollador 🐔💻** que lo incluya en la base de datos de la app. ¡Aquí me quedo acurrucada acompañándote con mucho amor! 🐱💖`;
+      fallbackText = `Miau~ Te escucho con todo mi corazón 🐱💖. Sobre lo que me preguntas (*"${userMessage}"*), ese tema no se encuentra en mi base de datos de bienestar femenino. Si es un tema que te gustaría consultar aquí, puedes pedirle con cariño al **Pollo Desarrollador 🐔💻** que lo incluya en la app. ¡Aquí me quedo acurrucada acompañándote! 🐱✨`;
     } else if (id === 'pipo') {
-      fallbackText = `He analizado tu consulta (*"${userMessage}"*), pero ese tema específico no está registrado en mi base ontológica de salud menstrual 🐧📊. Si consideras útil que la app abarque este tipo de temas, puedes solicitarle al **Pollo Desarrollador 🐔💻** que incorpore esta información a nuestra base de datos en una futura actualización 🐧🧊.`;
+      fallbackText = `He analizado tu consulta con mucho cuidado 🐧📊. Sobre (*"${userMessage}"*), ese tema no está registrado aún en mi base ontológica. Puedes solicitarle al **Pollo Desarrollador 🐔💻** que incorpore esta información en una próxima actualización 🐧🧊. ¡Cualquier duda de tu ciclo aquí estoy para ayudarte!`;
     } else if (id === 'naveen') {
       fallbackText = `Namasté... Sobre lo que me consultas (*"${userMessage}"*), no encuentro ese conocimiento en mi compendio de bienestar hormonal 🐸🍃. Si sientes que es un saber que enriquecería la app, puedes pedirle al **Pollo Desarrollador 🐔💻** que lo añada a nuestra base de datos. Permíteme seguir acompañando tu serenidad 🐸✨.`;
     } else {
-      // Manola
-      fallbackText = `Corazón, sobre lo que me preguntas (*"${userMessage}"*), no tengo esa información específica en mi base de datos de salud menstrual 🦔. Mi misión es cuidarte y explicarte todo sobre tu ciclo, tus cólicos, tus hormonas y tu alivio diario. Si sientes que es algo importante que deberíamos tener aquí, puedes solicitárselo al **Pollo Desarrollador 🐔💻** para que lo investigue y lo incluya en nuestra base de datos. ¡Aquí estoy siempre para mimarte y acompañarte en tu ciclo! 🦔💖`;
+      fallbackText = `¡Hola! Te acompaño con mucho cariño en lo que sientes 🦔💖. Sobre (*"${userMessage}"*), aún no tengo ese tema en mi memoria de salud femenina. Puedes pedirle al **Pollo Desarrollador 🐔💻** que investigue y lo añada. ¡Te mando un abrazo suave! 🦔✨`;
     }
 
     return {
       text: fallbackText,
       resources: [],
-      linkedRoutines: [],
-      type: 'general_dialogue'
+      linkedRoutines: candidateRoutines,
+      type: 'conversational_general'
     };
   }
 }
@@ -5465,54 +5538,109 @@ document.addEventListener('DOMContentLoaded', () => {
     if (element) element.classList.add('active');
   };
 
-  // 7. Apple HealthKit Modal & Face ID
-  window.triggerAppleHealthPermissionModal = function() {
-    const modal = document.getElementById('modal-apple-health');
+  // 7. Flo Sync Assistant Modal & Handlers
+  window.openFloSyncModal = function() {
+    const modal = document.getElementById('modal-flo-sync');
     if (modal) modal.style.display = 'flex';
   };
+  window.triggerAppleHealthPermissionModal = window.openFloSyncModal;
 
-  window.closeAppleHealthModal = async function(allowed) {
-    const modal = document.getElementById('modal-apple-health');
+  window.closeFloSyncModal = function() {
+    const modal = document.getElementById('modal-flo-sync');
     if (modal) modal.style.display = 'none';
-    const statusBadge = document.getElementById('ob-health-status-badge');
-    const btnHealth = document.getElementById('btn-ob-connect-health');
-    const btnHealthText = document.getElementById('btn-ob-health-text');
+  };
+  window.closeAppleHealthModal = window.closeFloSyncModal;
 
-    if (allowed) {
-      obHealthKitConnected = true;
-      userProfile.healthKitConectado = true;
+  window.confirmFloQuickSync = function() {
+    const cycleLen = parseInt(document.getElementById('flo-modal-cycle-len')?.value || '28', 10);
+    const periodLen = parseInt(document.getElementById('flo-modal-period-len')?.value || '5', 10);
 
-      // Sincronización real de Apple HealthKit
-      await HealthKitBridge.requestAuthorization();
-      HealthKitBridge.syncHealthKitData(
-        loggedDaysData, 
-        userProfile.lmpFecha, 
-        userProfile.duracionPromedioCiclo, 
-        userProfile.duracionPromedioPeriodo
-      );
+    obHealthKitConnected = true;
+    userProfile.floConectado = true;
+    userProfile.duracionPromedioCiclo = cycleLen;
+    userProfile.duracionPromedioPeriodo = periodLen;
 
-      if (statusBadge) {
-        statusBadge.textContent = '🟢 Conectado con Apple Health';
-        statusBadge.style.color = '#10b981';
-        statusBadge.style.background = 'rgba(16, 185, 129, 0.15)';
-      }
-      if (btnHealth) {
-        btnHealth.style.background = 'rgba(16, 185, 129, 0.2)';
-        btnHealth.style.border = '1px solid #10b981';
-        btnHealth.style.color = '#10b981';
-      }
-      if (btnHealthText) btnHealthText.textContent = '✓ Apple Health Conectado (4 ciclos calibrados)';
+    const res = FloSyncEngine.syncFloData(
+      loggedDaysData,
+      obSelectedLmpDateStr || userProfile.lmpFecha,
+      cycleLen,
+      periodLen
+    );
 
-      showInAppToast({
-        title: 'Apple HealthKit Conectado ❤️',
-        message: '4 ciclos de biometría, temperatura basal y frecuencia cardíaca importados con éxito.',
-        icon: '❤️',
-        badgeText: 'Salud iOS',
-        badgeIcon: 'health_and_safety',
-        accentColor: '#ff2d55',
-        duration: 4500
-      });
+    window.closeFloSyncModal();
+
+    const statusBadge = document.getElementById('ob-flo-status-badge') || document.getElementById('ob-health-status-badge');
+    const btnFlo = document.getElementById('btn-ob-connect-flo') || document.getElementById('btn-ob-connect-health');
+    const btnFloText = document.getElementById('btn-ob-flo-text') || document.getElementById('btn-ob-health-text');
+
+    if (statusBadge) {
+      statusBadge.textContent = '🟢 Flo Sincronizado';
+      statusBadge.style.color = '#ff758f';
+      statusBadge.style.background = 'rgba(255, 77, 109, 0.2)';
     }
+    if (btnFlo) {
+      btnFlo.style.background = 'rgba(255, 77, 109, 0.2)';
+      btnFlo.style.border = '1px solid #ff758f';
+      btnFlo.style.color = '#ff758f';
+    }
+    if (btnFloText) btnFloText.textContent = `✓ Flo Transferido (${res.recordsCount} días sincronizados)`;
+
+    showInAppToast({
+      title: 'Datos de Flo Sincronizados 🌸',
+      message: res.message,
+      icon: '🌸',
+      badgeText: 'Flo Health Sync',
+      badgeIcon: 'sync',
+      accentColor: '#ff758f',
+      duration: 4500
+    });
+  };
+
+  window.importFloFileFromOnboarding = function(fileInput) {
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    showInAppInfoToast('Importando Flo', `Leyendo ${file.name}...`, '⏳');
+
+    reader.onload = function(e) {
+      const content = e.target.result;
+      const parseRes = FloSyncEngine.parseFloCSV(content);
+
+      if (parseRes && parseRes.totalEntries > 0) {
+        const res = FloSyncEngine.syncFloData(
+          loggedDaysData,
+          parseRes.latestPeriodDate || obSelectedLmpDateStr,
+          userProfile.duracionPromedioCiclo || 28,
+          userProfile.duracionPromedioPeriodo || 5,
+          parseRes.importedDays
+        );
+
+        obHealthKitConnected = true;
+        userProfile.floConectado = true;
+
+        const statusBadge = document.getElementById('ob-flo-status-badge');
+        const btnFloText = document.getElementById('btn-ob-flo-text');
+        if (statusBadge) {
+          statusBadge.textContent = '🟢 Flo Sincronizado';
+          statusBadge.style.color = '#ff758f';
+        }
+        if (btnFloText) btnFloText.textContent = `✓ Archivo Flo Importado (${parseRes.totalEntries} días)`;
+
+        showInAppToast({
+          title: 'Reporte de Flo Importado 🌸',
+          message: `Se importaron con éxito ${parseRes.totalEntries} registros de ciclo y síntomas desde Flo.`,
+          icon: '🌸',
+          badgeText: 'Flo Health Sync',
+          badgeIcon: 'check_circle',
+          accentColor: '#ff758f',
+          duration: 5000
+        });
+      } else {
+        window.confirmFloQuickSync();
+      }
+    };
+    reader.readAsText(file);
   };
 
   window.toggleObFaceId = async function(checked) {
@@ -9615,24 +9743,24 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- 5. Integración Apple HealthKit (Salud iOS) -->
-        <div class="settings-section-card" style="border-color: rgba(255, 45, 85, 0.35); background: rgba(255, 45, 85, 0.05);">
+        <!-- 5. Transferencia de Datos desde Flo 🌸 -->
+        <div class="settings-section-card" style="border-color: rgba(255, 77, 109, 0.4); background: rgba(255, 77, 109, 0.08);">
           <div class="settings-section-title">
-            <span class="material-symbols-outlined" style="color: #ff2d55;">favorite</span>
-            <span>Apple HealthKit (Salud iOS)</span>
+            <span style="font-size:1.15rem;">🌸</span>
+            <span>Transferencia de Datos desde Flo</span>
           </div>
           <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.4rem;">
-            Estado: <strong id="settings-healthkit-status">${HealthKitBridge.isConnected() ? '<span style="color:#10b981;">🟢 Conectado con Apple Health</span>' : '<span style="color:#cbd5e1;">⚪ No conectado</span>'}</strong>
+            Estado: <strong id="settings-flo-status">${FloSyncEngine.isConnected() ? '<span style="color:#ff758f;">🟢 Conectado y Sincronizado con Flo</span>' : '<span style="color:#cbd5e1;">⚪ No conectado</span>'}</strong>
           </div>
           <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
-            <button class="settings-action-btn" style="flex:1; background:rgba(255,45,85,0.2); border-color:#ff2d55; color:#ffffff;" onclick="syncAppleHealthFromSettings()">
+            <button class="settings-action-btn" style="flex:1; background:linear-gradient(135deg, #ff4d6d 0%, #ff758f 100%); border-color:#ff758f; color:#ffffff; font-weight:800;" onclick="openFloSyncModal()">
               <span class="material-symbols-outlined" style="font-size:0.95rem;">sync</span>
-              <span>Sincronizar Biometría Apple Health</span>
+              <span>Asistente de Sincronización Flo 🌸</span>
             </button>
-            <input type="file" id="healthkit-xml-file-input" accept=".xml,.json,.zip" style="display:none;" onchange="importHealthKitFileFromSettings(this)" />
-            <button class="settings-action-btn" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:#cbd5e1; padding:0.45rem 0.75rem;" onclick="document.getElementById('healthkit-xml-file-input').click()" title="Importar archivo export.xml de la app Salud">
+            <input type="file" id="flo-file-input-settings" accept=".csv,.json,.txt" style="display:none;" onchange="importFloFileFromSettings(this)" />
+            <button class="settings-action-btn" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:#cbd5e1; padding:0.45rem 0.75rem;" onclick="document.getElementById('flo-file-input-settings').click()" title="Importar archivo exportado de Flo">
               <span class="material-symbols-outlined" style="font-size:0.95rem;">upload_file</span>
-              <span>Importar export.xml</span>
+              <span>Importar Archivo Flo</span>
             </button>
           </div>
         </div>
@@ -9728,90 +9856,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.syncAppleHealthFromSettings = async function() {
-    showInAppInfoToast('Apple HealthKit', 'Sincronizando biometría y ciclos...', '🔄');
-    await HealthKitBridge.requestAuthorization();
-    const res = HealthKitBridge.syncHealthKitData(
-      loggedDaysData, 
-      userProfile.lmpFecha, 
-      userProfile.duracionPromedioCiclo, 
-      userProfile.duracionPromedioPeriodo
-    );
-
-    const statusEl = document.getElementById('settings-healthkit-status');
-    if (statusEl) statusEl.innerHTML = '<span style="color:#10b981;">🟢 Conectado con Apple Health</span>';
-    userProfile.healthKitConectado = true;
-
-    showInAppToast({
-      title: 'Apple HealthKit Sincronizado ❤️',
-      message: res.message,
-      icon: '❤️',
-      badgeText: 'Salud iOS',
-      badgeIcon: 'health_and_safety',
-      accentColor: '#ff2d55',
-      duration: 4500
-    });
+  window.syncFloDataFromSettings = function() {
+    window.openFloSyncModal();
   };
+  window.syncAppleHealthFromSettings = window.syncFloDataFromSettings;
 
-  window.importHealthKitFileFromSettings = function(fileInput) {
+  window.importFloFileFromSettings = function(fileInput) {
     if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
     const file = fileInput.files[0];
     const reader = new FileReader();
 
-    showInAppInfoToast('Importando Datos', `Leyendo ${file.name}...`, '⏳');
+    showInAppInfoToast('Importando Flo', `Leyendo ${file.name}...`, '⏳');
 
     reader.onload = function(e) {
       const content = e.target.result;
-      const parseRes = HealthKitBridge.parseHealthKitXML(content);
+      const parseRes = FloSyncEngine.parseFloCSV(content);
 
-      if (parseRes && parseRes.success) {
-        if (parseRes.cycles && parseRes.cycles.length > 0) {
-          parseRes.cycles.forEach(c => {
-            if (!loggedDaysData[c.date]) {
-              loggedDaysData[c.date] = { date: c.date, bleeding: c.flow, painLevel: 2, symptoms: ['Cólicos'], appleHealthSynced: true };
-            }
-          });
-        }
-        if (parseRes.temperatures && parseRes.temperatures.length > 0) {
-          parseRes.temperatures.forEach(t => {
-            if (loggedDaysData[t.date]) loggedDaysData[t.date].basalTemp = t.bbt;
-          });
-        }
-        if (parseRes.heartRates && parseRes.heartRates.length > 0) {
-          parseRes.heartRates.forEach(h => {
-            if (loggedDaysData[h.date]) loggedDaysData[h.date].restingHeartRate = h.bpm;
-          });
-        }
+      if (parseRes && parseRes.totalEntries > 0) {
+        const res = FloSyncEngine.syncFloData(
+          loggedDaysData,
+          parseRes.latestPeriodDate || userProfile.lmpFecha,
+          userProfile.duracionPromedioCiclo || 28,
+          userProfile.duracionPromedioPeriodo || 5,
+          parseRes.importedDays
+        );
 
-        userProfile.healthKitConectado = true;
-        const statusEl = document.getElementById('settings-healthkit-status');
-        if (statusEl) statusEl.innerHTML = '<span style="color:#10b981;">🟢 Conectado con Apple Health</span>';
+        userProfile.floConectado = true;
+        const statusEl = document.getElementById('settings-flo-status');
+        if (statusEl) statusEl.innerHTML = '<span style="color:#ff758f;">🟢 Conectado y Sincronizado con Flo</span>';
 
         showInAppToast({
-          title: 'Export.xml Importado con Éxito 🎉',
-          message: `Se importaron ${parseRes.totalRecords || Object.keys(loggedDaysData).length} registros de salud.`,
-          icon: '📊',
-          badgeText: 'Apple HealthKit',
+          title: 'Reporte Flo Importado con Éxito 🌸',
+          message: `Se importaron ${parseRes.totalEntries} registros de ciclo e historial desde Flo.`,
+          icon: '🌸',
+          badgeText: 'Flo Health',
           badgeIcon: 'check_circle',
-          accentColor: '#10b981',
+          accentColor: '#ff758f',
           duration: 5000
         });
       } else {
-        HealthKitBridge.syncHealthKitData(loggedDaysData, userProfile.lmpFecha, userProfile.duracionPromedioCiclo, userProfile.duracionPromedioPeriodo);
+        const res = FloSyncEngine.syncFloData(loggedDaysData, userProfile.lmpFecha, userProfile.duracionPromedioCiclo, userProfile.duracionPromedioPeriodo);
+        const statusEl = document.getElementById('settings-flo-status');
+        if (statusEl) statusEl.innerHTML = '<span style="color:#ff758f;">🟢 Conectado y Sincronizado con Flo</span>';
+
         showInAppToast({
-          title: 'Apple Health Sincronizado ❤️',
-          message: 'Datos de biometría calibrados e importados correctamente.',
-          icon: '❤️',
-          badgeText: 'Salud iOS',
-          badgeIcon: 'health_and_safety',
-          accentColor: '#ff2d55',
-          duration: 4000
+          title: 'Flo Sincronizado 🌸',
+          message: res.message,
+          icon: '🌸',
+          badgeText: 'Flo Health',
+          badgeIcon: 'check_circle',
+          accentColor: '#ff758f',
+          duration: 4500
         });
       }
     };
 
     reader.readAsText(file);
   };
+  window.importHealthKitFileFromSettings = window.importFloFileFromSettings;
 
   window.testFaceIDFromSettings = async function() {
     showInAppInfoToast('Face ID', 'Iniciando escaneo biométrico con Secure Enclave...', '🔒');

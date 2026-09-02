@@ -112,6 +112,75 @@ export class HealthAIAgentEngine {
     });
   }
 
+  /**
+   * Encuentra las rutinas de la pantalla de Alivio que mejor alivian la consulta de la usuaria
+   */
+  static findBestMatchingRoutines(userMessage, max = 2) {
+    const q = (userMessage || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // 1. Cólicos, dolor menstrual, dolor pélvico o de vientre
+    if (q.includes('colic') || (q.includes('dolor') && (q.includes('vientre') || q.includes('menstru') || q.includes('regla') || q.includes('periodo') || q.includes('pelvi') || q.includes('bajo')))) {
+      return [
+        { id: 'routine-py-2', name: 'Yoga Terapéutico para Dismenorrea (Postura de la Paloma)', benefit: 'Ayuda a soltar la tensión del útero y la pelvis profunda mediante estiramientos suaves.' },
+        { id: 'routine-st-1', name: 'Estiramiento de Rodillas al Pecho (Apanasana)', benefit: 'Masajea el bajo vientre y alivia de inmediato los espasmos y cólicos.' }
+      ].slice(0, max);
+    }
+
+    // 2. Dolor de espalda, lumbar, cintura o sacro
+    if (q.includes('espalda') || q.includes('lumbar') || q.includes('cintura') || q.includes('sacr') || q.includes('columna')) {
+      return [
+        { id: 'routine-py-1', name: 'Yoga Restaurativo para Liberación Sacra', benefit: 'Descomprime los nervios de la espalda baja y relaja la zona lumbar.' },
+        { id: 'routine-st-2', name: 'Estiramiento Gato-Vaca Somático', benefit: 'Moviliza suavemente las vértebras y disuelve la rigidez de la espalda.' }
+      ].slice(0, max);
+    }
+
+    // 3. Sensibilidad en senos, pesadez o congestión pectoral
+    if (q.includes('seno') || q.includes('pecho') || q.includes('mamas') || q.includes('tetas') || q.includes('pezon')) {
+      return [
+        { id: 'routine-st-4', name: 'Apertura Torácica & Hombros Suave', benefit: 'Mejora la circulación y la sensación de pesadez en el pecho.' },
+        { id: 'routine-so-1', name: 'Respiración Pélvica Diafragmática 4-7-8', benefit: 'Oxigena los tejidos y calma la sensibilidad hormonal.' }
+      ].slice(0, max);
+    }
+
+    // 4. Hinchazón, gases, digestión lenta o inflamación abdominal
+    if (q.includes('hinch') || q.includes('gas') || q.includes('inflam') || q.includes('digest') || q.includes('estomago') || q.includes('pesadez')) {
+      return [
+        { id: 'routine-st-3', name: 'Torsión Abdominal Suave en el Suelo', benefit: 'Facilita la expulsión de gases y reactiva la digestión suavemente.' },
+        { id: 'routine-py-3', name: 'Postura del Niño Asistida con Cojín', benefit: 'Quita toda la presión sobre el abdomen y calma la inflamación.' }
+      ].slice(0, max);
+    }
+
+    // 5. Ansiedad, estrés, tristeza, llanto, irritabilidad o cambios de humor
+    if (q.includes('ansied') || q.includes('estres') || q.includes('nervio') || q.includes('triste') || q.includes('llor') || q.includes('panico') || q.includes('humor') || q.includes('miedo') || q.includes('abrum')) {
+      return [
+        { id: 'routine-so-2', name: 'Técnica de Conexión a Tierra 5-4-3-2-1', benefit: 'Frena los pensamientos abrumadores y te ancla en calma.' },
+        { id: 'routine-so-3', name: 'Relajación Muscular Progresiva', benefit: 'Envía una señal de seguridad al cerebro para que el cuerpo se suelte por completo.' }
+      ].slice(0, max);
+    }
+
+    // 6. Insomnio, desvelo, cansancio o fatiga
+    if (q.includes('dormir') || q.includes('insomni') || q.includes('desvel') || q.includes('noche') || q.includes('sueno') || q.includes('cansad') || q.includes('agotad')) {
+      return [
+        { id: 'routine-so-3', name: 'Relajación Muscular Progresiva para Dormir', benefit: 'Prepara tu cuerpo para un sueño profundo y reparador.' },
+        { id: 'routine-so-1', name: 'Respiración Somática Diafragmática 4-7-8', benefit: 'Baja las pulsaciones y te ayuda a conciliar el sueño con calma.' }
+      ].slice(0, max);
+    }
+
+    // 7. Dolor de cabeza, migraña o tensión en el cuello
+    if (q.includes('cabeza') || q.includes('migran') || q.includes('jaqueca') || q.includes('cuello') || q.includes('nuca')) {
+      return [
+        { id: 'routine-st-5', name: 'Liberación Somática Cervical y de Cuello', benefit: 'Disuelve la tensión acumulada en el cuello y la base de la cabeza.' },
+        { id: 'routine-so-1', name: 'Respiración Somática 4-7-8', benefit: 'Aumenta la oxigenación general disminuyendo la presión cefálica.' }
+      ].slice(0, max);
+    }
+
+    // Por defecto: Bienestar somático general
+    return [
+      { id: 'routine-so-1', name: 'Respiración Pélvica Diafragmática 4-7-8', benefit: 'Calma tu sistema nervioso y oxigena todo tu cuerpo con suavidad.' },
+      { id: 'routine-st-1', name: 'Estiramiento de Rodillas al Pecho', benefit: 'Libera la tensión pélvica y brinda alivio inmediato.' }
+    ].slice(0, max);
+  }
+
   async processQuery(userMessage, currentPet = 'amy', userProfile = {}, conversationHistory = []) {
     const intent = this.classifyIntent(userMessage);
     const persona = AgentPersonaEngine.getPersonaData(currentPet);
@@ -139,8 +208,10 @@ export class HealthAIAgentEngine {
     }
 
     // =========================================================================
-    // CAMINO 1: GOOGLE GEMINI API (CONVERSACIÓN LIBRE GENERATIVA SOBRE CUALQUIER TEMA)
+    // CAMINO 1: GOOGLE GEMINI API (CONVERSACIÓN GENERATIVA ESTRUCTURADA)
     // =========================================================================
+    const candidateRoutines = HealthAIAgentEngine.findBestMatchingRoutines(userMessage, 2);
+
     if (GeminiConfig.hasApiKey()) {
       try {
         const cyclePhase = userProfile.faseHormonal || 'Fase Ovulatoria';
@@ -151,36 +222,43 @@ export class HealthAIAgentEngine {
         const ragHits = this.ragEngine.search(userMessage, 2);
         let groundingData = '';
         if (ragHits && ragHits.length > 0) {
-          groundingData = ragHits.map(h => `TÓPICO: ${h.node.title}\nEXPLICACIÓN BIOLÓGICA: ${h.node.biologicalExplanation}\nPASOS DE ACCIÓN: ${h.node.actionableSteps.join('; ')}`).join('\n\n');
+          groundingData = ragHits.map(h => `TÓPICO: ${h.node.title}\nEXPLICACIÓN: ${h.node.biologicalExplanation}\nRECOMENDACIONES: ${h.node.actionableSteps.join('; ')}`).join('\n\n');
         }
 
-        const systemPrompt = `Eres ${persona.name}, la compañera empática, cercana y experta en salud menstrual, bienestar hormonal y cuidado integral en la app Pochirocho.
+        const routinesPromptText = candidateRoutines.map(r => `• Rutina "${r.name}" (ID: ${r.id}) -> Por qué le sirve: ${r.benefit}`).join('\n');
+
+        const systemPrompt = `Eres ${persona.name}, la compañera amorosa, empática y experta en salud menstrual y bienestar de la app Pochirocho.
 Tu personalidad es: ${persona.style}.
 
-ESTADO FISIOLÓGICO DE LA USUARIA:
-- Fase Hormonal Actual: ${cyclePhase} (Día ${cycleDay} del ciclo).
-- Síntomas Registrados Hoy: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Sin síntomas agudos registrados'}.
+ESTADO DE LA USUARIA:
+- Fase Hormonal: ${cyclePhase} (Día ${cycleDay} del ciclo).
+- Síntomas Registrados Hoy: ${symptomsList.length > 0 ? symptomsList.join(', ') : 'Ninguno registrado'}.
 
-${groundingData ? `BASE MÉDICA Y CLÍNICA DE REFERENCIA:\n${groundingData}\n` : ''}
+RUTINAS DE LA PESTAÑA DE ALIVIO DE LA APP PARA ESTE CASO:
+${routinesPromptText}
 
-DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
-1. Ofrece una respuesta rica, amplia, detallada y pedagógica que no solo responda superficialmente, sino que explique con amor y claridad qué ocurre en su cuerpo, por qué se siente así y qué puede hacer de inmediato.
-2. Estructura tu mensaje en párrafos conversacionales y fluidos, con explicaciones biológicas claras pero sin tecnicismos fríos.
-3. Brinda al menos 3 a 4 recomendaciones prácticas y específicas (hábitos, nutrición reconfortante, postura o calor local, hidratación y descanso).
-4. Mantén siempre el tono cariñoso, protector y empático de ${persona.name}.
-5. Si es relevante para su molestia o relajación, invítala con cariño a abrir las rutinas terapéuticas disponibles en su sección de Alivio.`;
+${groundingData ? `BASE MÉDICA DE REFERENCIA:\n${groundingData}\n` : ''}
+
+REGLAS OBLIGATORIAS DE ESTRUCTURA Y TONO (DEBES RESPONDER EN ESTOS 4 PASOS EXACTOS):
+
+1. **MENSAJE DE COMPRENSIÓN Y EMPATÍA**:
+   Comienza con un mensaje cálido donde valides sinceramente lo que ella está sintiendo. Que sienta que la escuchas y la acompañas con mucho amor.
+
+2. **EXPLICACIÓN SENCILLA (CERO TECNICISMOS)**:
+   Explícale qué le está pasando a su cuerpo de forma clara, amena y con palabras cotidianas. NO uses tecnicismos médicos fríos o complicados. Usa analogías amables (ejemplo: "el útero es como un saquito muscular...", "las hormonas están en un momento de descanso...", "tu cuerpo retiene un poquito de líquido...") para que entienda a la primera y sin esfuerzo.
+
+3. **RECOMENDACIONES PRÁCTICAS**:
+   Brinda 3 o 4 consejos claros, útiles y aplicables de inmediato en su hogar (hidratación, calor local, qué infusión tomar, qué alimentos reconfortantes elegir, cómo acomodarse o descansar).
+
+4. **RECOMENDACIÓN DE RUTINA EN LA PESTAÑA DE ALIVIO**:
+   Recomiéndale con entusiasmo la rutina "${candidateRoutines[0]?.name || 'Respiración Pélvica'}" de la pestaña de **Alivio** de la app, explicándole con palabras sencillas por qué le va a ayudar a aliviar su molestia específica.`;
 
         const geminiResponseText = await GeminiConfig.generateResponse(systemPrompt, userMessage, conversationHistory);
-
-        let linkedRoutines = [];
-        if (ragHits && ragHits.length > 0) {
-          linkedRoutines = ragHits[0].node.linkedRoutines || [];
-        }
 
         return {
           text: geminiResponseText,
           resources: requestedExternalMedia && ragHits.length > 0 ? (ragHits[0].node.verifiedResources || []) : [],
-          linkedRoutines: linkedRoutines,
+          linkedRoutines: candidateRoutines,
           type: 'gemini_ai_response'
         };
       } catch (geminiError) {
@@ -189,39 +267,35 @@ DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
     }
 
     // =========================================================================
-    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (RESPUESTA RICA, AMPLIA Y DETALLADA)
+    // MOTOR SEMÁNTICO RAG LOCAL DE RESPALDO (ESTRUCTURA EXACTA EN 4 PASOS)
     // =========================================================================
     const searchResults = this.ragEngine.search(userMessage, 2);
 
     if (searchResults && searchResults.length > 0 && (searchResults[0].score >= 3.0 || searchResults[0].confidence >= 25)) {
       const topMatch = searchResults[0].node;
-      const secondaryMatch = searchResults.length > 1 && searchResults[1].confidence > 50 ? searchResults[1].node : null;
 
       // 1. Apertura de empatía y validación emocional
       const empathyOpener = AgentPersonaEngine.generateValidationMessage(currentPet, userMessage, topMatch.title);
       
-      // 2. Explicación biológica pedagógica y comprensible
+      // 2. Explicación biológica pedagógica y comprensible sin tecnicismos
       const simpleBio = HealthAIAgentEngine.simplifyBiologicalExplanation(topMatch, userMessage);
       
-      // 3. Recomendaciones prácticas detalladas con viñetas
+      // 3. Recomendaciones prácticas en viñetas
       const cleanSteps = HealthAIAgentEngine.simplifyActionSteps(topMatch.actionableSteps);
       let stepsMarkdown = '';
       if (cleanSteps.length > 0) {
-        stepsMarkdown = 'Aquí tienes varias recomendaciones clave que te ayudarán a sentirte mucho mejor:\n\n' + 
+        stepsMarkdown = 'Aquí tienes varias cosas sencillas y efectivas que puedes hacer ahora mismo:\n\n' + 
           cleanSteps.map(step => `• **${step}**`).join('\n\n');
       }
 
-      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${stepsMarkdown}`;
-
-      // 4. Mención de rutinas interactivas en Alivio
-      let linkedRoutines = [...(topMatch.linkedRoutines || [])];
-      if (secondaryMatch && secondaryMatch.linkedRoutines) {
-        linkedRoutines = linkedRoutines.concat(secondaryMatch.linkedRoutines);
+      // 4. Recomendación de rutina de Alivio
+      let routineSection = '';
+      if (candidateRoutines.length > 0) {
+        const r = candidateRoutines[0];
+        routineSection = `🌿 **Para ayudarte a sentirte mejor:** Te recomiendo hacer la rutina **"${r.name}"** en tu sección de **Alivio**. ${r.benefit} Puedes abrirla directamente aquí abajo para que la hagamos juntas paso a paso ✨.`;
       }
 
-      if (linkedRoutines.length > 0) {
-        responseMarkdown += `\n\n🌿 **Tómate un momento:** He seleccionado para ti la rutina **"${linkedRoutines[0].name}"**. Puedes abrirla directamente aquí abajo o encontrarla en tu pestaña de **Alivio** para que la hagamos paso a paso juntas ✨.`;
-      }
+      let responseMarkdown = `${empathyOpener}\n\n${simpleBio}\n\n${stepsMarkdown}\n\n${routineSection}`;
 
       if (topMatch.redFlags) {
         responseMarkdown += `\n\n⚠️ *Nota de cuidado:* ${topMatch.redFlags}`;
@@ -230,18 +304,10 @@ DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
       const signOff = persona.signOffs[Math.floor(Math.random() * persona.signOffs.length)];
       responseMarkdown += `\n\n*${signOff}*`;
 
-      let externalResources = [];
-      if (requestedExternalMedia || topMatch.verifiedResources) {
-        externalResources = topMatch.verifiedResources || [];
-        if (secondaryMatch && secondaryMatch.verifiedResources) {
-          externalResources = externalResources.concat(secondaryMatch.verifiedResources);
-        }
-      }
-
       return {
         text: responseMarkdown,
-        resources: requestedExternalMedia ? externalResources : (externalResources.length > 0 ? externalResources.slice(0, 1) : []),
-        linkedRoutines: linkedRoutines,
+        resources: requestedExternalMedia && topMatch.verifiedResources ? topMatch.verifiedResources : [],
+        linkedRoutines: candidateRoutines,
         type: 'rag_expert_response',
         topicId: topMatch.id
       };
@@ -253,23 +319,22 @@ DIRECTRICES DE COMUNICACIÓN Y ESTRUCTURA:
     const id = persona.id;
     let fallbackText = '';
     if (id === 'luffy') {
-      fallbackText = `¡Hey! Sobre lo que me preguntas (*"${userMessage}"*), no tengo esa información específica en mi memoria local de salud menstrual 🐒. Si necesitas que Pochirocho cuente con información de este estilo, puedes solicitárselo al **Pollo Desarrollador 🐔💻** para que investigue y la añada a nuestra base de datos. ¡Cualquier duda de tu ciclo aquí estoy listo para apoyarte! 🐒✨`;
+      fallbackText = `¡Hey! Te entiendo y aquí estoy contigo 🐒. Sobre lo que me preguntas (*"${userMessage}"*), no tengo esa información específica en mi memoria local de salud menstrual. Si necesitas que Pochirocho cuente con este tipo de información, puedes solicitárselo al **Pollo Desarrollador 🐔💻** para que la añada a nuestra base de datos. Mientras tanto, ¡puedes relajarte con las rutinas de nuestra sección de Alivio! 🐒✨`;
     } else if (id === 'maomao') {
-      fallbackText = `Miau~ Sobre lo que me preguntas (*"${userMessage}"*), ese tema no se encuentra en mi base de datos de bienestar femenino 🐱. Si es un tema que te gustaría consultar aquí, puedes pedirle con cariño al **Pollo Desarrollador 🐔💻** que lo incluya en la base de datos de la app. ¡Aquí me quedo acurrucada acompañándote con mucho amor! 🐱💖`;
+      fallbackText = `Miau~ Te escucho con todo mi corazón 🐱💖. Sobre lo que me preguntas (*"${userMessage}"*), ese tema no se encuentra en mi base de datos de bienestar femenino. Si es un tema que te gustaría consultar aquí, puedes pedirle con cariño al **Pollo Desarrollador 🐔💻** que lo incluya en la app. ¡Aquí me quedo acurrucada acompañándote! 🐱✨`;
     } else if (id === 'pipo') {
-      fallbackText = `He analizado tu consulta (*"${userMessage}"*), pero ese tema específico no está registrado en mi base ontológica de salud menstrual 🐧📊. Si consideras útil que la app abarque este tipo de temas, puedes solicitarle al **Pollo Desarrollador 🐔💻** que incorpore esta información a nuestra base de datos en una futura actualización 🐧🧊.`;
+      fallbackText = `He analizado tu consulta con mucho cuidado 🐧📊. Sobre (*"${userMessage}"*), ese tema no está registrado aún en mi base ontológica. Puedes solicitarle al **Pollo Desarrollador 🐔💻** que incorpore esta información en una próxima actualización 🐧🧊. ¡Cualquier duda de tu ciclo aquí estoy para ayudarte!`;
     } else if (id === 'naveen') {
       fallbackText = `Namasté... Sobre lo que me consultas (*"${userMessage}"*), no encuentro ese conocimiento en mi compendio de bienestar hormonal 🐸🍃. Si sientes que es un saber que enriquecería la app, puedes pedirle al **Pollo Desarrollador 🐔💻** que lo añada a nuestra base de datos. Permíteme seguir acompañando tu serenidad 🐸✨.`;
     } else {
-      // Manola
-      fallbackText = `Corazón, sobre lo que me preguntas (*"${userMessage}"*), no tengo esa información específica en mi base de datos de salud menstrual 🦔. Mi misión es cuidarte y explicarte todo sobre tu ciclo, tus cólicos, tus hormonas y tu alivio diario. Si sientes que es algo importante que deberíamos tener aquí, puedes solicitárselo al **Pollo Desarrollador 🐔💻** para que lo investigue y lo incluya en nuestra base de datos. ¡Aquí estoy siempre para mimarte y acompañarte en tu ciclo! 🦔💖`;
+      fallbackText = `¡Hola! Te acompaño con mucho cariño en lo que sientes 🦔💖. Sobre (*"${userMessage}"*), aún no tengo ese tema en mi memoria de salud femenina. Puedes pedirle al **Pollo Desarrollador 🐔💻** que investigue y lo añada. ¡Te mando un abrazo suave! 🦔✨`;
     }
 
     return {
       text: fallbackText,
       resources: [],
-      linkedRoutines: [],
-      type: 'general_dialogue'
+      linkedRoutines: candidateRoutines,
+      type: 'conversational_general'
     };
   }
 }

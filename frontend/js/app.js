@@ -1606,24 +1606,35 @@ const GeminiConfig = {
     // Construir historial de mensajes en formato Gemini
     const contents = [];
 
-    // Mensajes anteriores
-    if (Array.isArray(conversationHistory)) {
-      conversationHistory.slice(-6).forEach(msg => {
-        if (msg.sender === 'user') {
+    // Mensajes anteriores (excluyendo el último si ya es el mensaje actual)
+    let historyToUse = Array.isArray(conversationHistory) ? [...conversationHistory] : [];
+    if (historyToUse.length > 0 && historyToUse[historyToUse.length - 1].sender === 'user' && historyToUse[historyToUse.length - 1].text === userMessage) {
+      historyToUse.pop();
+    }
+
+    // Filtrar para que la conversación empiece siempre con un mensaje de 'user'
+    const firstUserIdx = historyToUse.findIndex(m => m.sender === 'user');
+    if (firstUserIdx !== -1) {
+      historyToUse = historyToUse.slice(firstUserIdx);
+    } else {
+      historyToUse = [];
+    }
+
+    // Asegurar alternancia estricta user -> model -> user -> model
+    let lastRole = null;
+    historyToUse.slice(-8).forEach(msg => {
+      const role = (msg.sender === 'user') ? 'user' : 'model';
+      if (role !== lastRole) {
+        const cleanText = (msg.text || '').replace(/<[^>]*>?/gm, '').trim();
+        if (cleanText) {
           contents.push({
-            role: 'user',
-            parts: [{ text: msg.text }]
-          });
-        } else if (msg.sender === 'spike' || msg.sender === 'pet') {
-          // Limpiar tags HTML antes de enviar
-          const cleanText = msg.text.replace(/<[^>]*>?/gm, '');
-          contents.push({
-            role: 'model',
+            role: role,
             parts: [{ text: cleanText }]
           });
+          lastRole = role;
         }
-      });
-    }
+      }
+    });
 
     // Mensaje actual del usuario
     contents.push({
@@ -1640,7 +1651,7 @@ const GeminiConfig = {
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 1024
+        maxOutputTokens: 1600
       }
     };
 
@@ -1649,7 +1660,7 @@ const GeminiConfig = {
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        const timeoutId = setTimeout(() => controller.abort(), 18000);
 
         const response = await fetch(endpoint, {
           method: 'POST',

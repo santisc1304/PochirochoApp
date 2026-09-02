@@ -101,14 +101,47 @@ export class StackingEnsemblePredictor {
     }
 
     const daysUntilNextPeriod = Math.max(0, Math.round(ensembleCycleLength - currentCycleDay));
+    const isDelayed = currentCycleDay > ensembleCycleLength;
+    const daysLate = isDelayed ? currentCycleDay - Math.round(ensembleCycleLength) : 0;
+
+    if (isDelayed) {
+      faseHormonal = 'Fase Lútea Prolongada';
+    }
 
     return {
       duracionCicloEstimada: ensembleCycleLength,
       diaActualCiclo: currentCycleDay,
       faseHormonal: faseHormonal,
-      faseColor: faseColor,
+      faseColor: isDelayed ? '#F59E0B' : faseColor,
+      isDelayed: isDelayed,
+      diasRetraso: daysLate,
       diasFaltantesProximoPeriodo: daysUntilNextPeriod,
       confianzaAlgoritmoPorcentaje: Math.min(99, Math.max(75, Math.round(100 - (kalmanResult.sigma * 4))))
+    };
+  }
+
+  /**
+   * Re-alimenta el ensamble cuando la usuaria registra el inicio de un nuevo período
+   * recalibrando el Filtro de Kalman, la EMA y el baseline adaptativo.
+   */
+  feedCycleCompletion(completedDuration, historyCycles = [], fallbackDefault = 28) {
+    const validDuration = Math.max(15, Math.min(60, parseInt(completedDuration, 10) || fallbackDefault));
+    const historyDurations = historyCycles.map(c => typeof c === 'number' ? c : c.duracionDias).filter(Boolean);
+    historyDurations.push(validDuration);
+
+    const kalmanRes = this.kalman.predict(historyDurations);
+    const emaRes = this.ema.predict(historyDurations, fallbackDefault);
+
+    const newEstimatedLength = Math.round(
+      (this.wKalman * kalmanRes.duracionEstimada + (this.wEMA + this.wBayesianBiomarkers) * emaRes) * 10
+    ) / 10;
+
+    return {
+      nuevaDuracionCiclo: newEstimatedLength,
+      duracionCicloCompletado: validDuration,
+      nuevoSigma: kalmanRes.sigma,
+      totalCiclosHistoricos: historyDurations.length,
+      confianzaPorcentaje: Math.min(99, Math.max(75, Math.round(100 - (kalmanRes.sigma * 4))))
     };
   }
 }

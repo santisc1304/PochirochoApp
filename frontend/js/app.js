@@ -9697,11 +9697,20 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.updateSpotifySettingsStatus = function() {
+    const isConn = SpotifyPsychoacousticEngine.isConnected();
     const statusEl = document.getElementById('settings-spotify-status');
     const slotEl = document.getElementById('settings-spotify-btn-slot');
-    if (statusEl) statusEl.innerHTML = '<span style="color:#cbd5e1;">⚪ No conectada</span>';
+    if (statusEl) {
+      statusEl.innerHTML = isConn 
+        ? '<span style="color:#1ed760;">🟢 Cuenta Conectada</span>' 
+        : '<span style="color:#cbd5e1;">⚪ No conectada</span>';
+    }
     if (slotEl) {
-      slotEl.innerHTML = `
+      slotEl.innerHTML = isConn ? `
+        <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
+          <span>Desconectar Cuenta de Spotify</span>
+        </button>
+      ` : `
         <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
           <span>🟢 Conectar con Spotify</span>
         </button>

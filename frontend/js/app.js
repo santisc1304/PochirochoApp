@@ -7114,43 +7114,43 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isDelayed) {
       phaseBadgeText = `⏳ Retraso Menstrual (+${daysLate}d)`;
       phaseThemeColor = '#f59e0b';
-      energyAdvice = `Tus niveles de progesterona se mantienen elevados mientras tu cuerpo espera la señal de bajada. Es un momento para no sobreexigirte físicamente.`;
-      nutritionAdvice = `Infusiones calientes de canela, orégano suave o jengibre con miel para tonificar el útero. Consume magnesio (semillas de calabaza, chocolate 85%) para calmar la tensión pélvica.`;
-      movementAdvice = `Movilidad pélvica suave: círculos en cuatro apoyos (cat-cow) y posturas de apertura suave como postura del niño (Balasana) o mariposa en el suelo.`;
-      emotionalAdvice = `El cortisol y el estrés laboral o de rutina suelen retrasar la ovulación. Date permiso de descansar sin culpa y desconectar de pantallas 30 min antes de dormir.`;
-      hydrationSleepAdvice = `Meta: 2.3L de agua o infusiones tibias. Duerme en posición fetal con un cojín entre las rodillas para descomprimir la espalda baja.`;
+      energyAdvice = `Tu cuerpo se está tomando su propio tiempo y es completamente normal. A veces el ajetreo del trabajo o estudio, no dormir bien o cambios en tu rutina hacen que tu período se demore unos días. ¡Hoy no te sobreexijas ni te preocupes!`;
+      nutritionAdvice = `Consiéntete con una infusión calientita de canela, orégano suave o jengibre con miel. Un poquito de chocolate oscuro o frutos secos te vendrán de maravilla para calmar cualquier tensión.`;
+      movementAdvice = `Movimientos suaves que te apapachen: estírate en la cama como gatito o haz la postura del niño en el suelo para aflojar la espalda baja y la pancita sin agotarte.`;
+      emotionalAdvice = `El estrés diario es el principal motivo de estos pequeños retrasos. Regálate una tarde tranquila, apaga las pantallas media hora antes de dormir y haz algo que te haga sonreír.`;
+      hydrationSleepAdvice = `Toma unos 2.3L de agua o té tibio. Duerme de lado con una almohadita entre las piernas para que tu espalda descanse delicioso.`;
     } else if (currentPhase === 'Menstrual') {
       phaseBadgeText = `🩸 Fase Menstrual (Día ${currentDay})`;
       phaseThemeColor = '#e63946';
-      energyAdvice = `Tanto el estrógeno como la progesterona están en su punto basal más bajo. Tu cuerpo está destinando mucha energía biológica a la renovación del endometrio.`;
-      nutritionAdvice = `Prioriza hierro hémico (lentejas, espinacas, carnes magras) combinado con vitamina C (cítricos, fresas) para máxima absorción. Té de manzanilla o canela para relajar el músculo uterino.`;
-      movementAdvice = `Descanso activo reparador: estiramientos lumbares en cama, respiración diafragmática 4-7-8 y paseos suaves. Evita entrenamientos de alto impacto hoy.`;
-      emotionalAdvice = `Tu intuición y deseo de calma están elevados. Buen momento para escribir, leer, consentirte con una mantita térmica y escuchar tu lista relajante de Spotify.`;
-      hydrationSleepAdvice = `Meta: 2.2L de agua tibia o caldos nutritivos para compensar fluidos. Descansa mínimo 8 horas.`;
+      energyAdvice = `Tu energía está en modo recarga. Tu cuerpo está haciendo un trabajo hermoso limpiándose y renovándose por dentro, por eso es totalmente natural que sientas ganas de cobijarte y bajar el ritmo.`;
+      nutritionAdvice = `Come cosas que te abracen el corazón: lentejitas, espinacas y frutas frescas como mandarinas o fresas. Un tecito tibio de manzanilla calmará cualquier cólico en tu vientre.`;
+      movementAdvice = `Cero presiones. Caminatas muy suaves, estiramientos relajados en la cama y respiraciones hondas. ¡Hoy el mejor plan es descansar y consentirte!`;
+      emotionalAdvice = `Tu intuición y sensibilidad están a flor de piel. Ponte tu pijama más cómoda, colócate una mantita calientita en el abdomen y escucha tu música favorita.`;
+      hydrationSleepAdvice = `Toma al menos 2.2L de agua tibia o calditos reconfortantes. Duerme tus 8 horas completas sin alarmas si puedes.`;
     } else if (currentPhase === 'Folicular') {
       phaseBadgeText = `🌱 Fase Folicular (Día ${currentDay})`;
       phaseThemeColor = '#ff758f';
-      energyAdvice = `Tus niveles de estrógeno (estradiol) van en ascenso constante. Sentirás un aumento natural en tu claridad mental, sociabilidad y resistencia física.`;
-      nutritionAdvice = `Alimentos ricos en zinc, probióticos (yogur griego, kéfir) y verduras crucíferas (brócoli, rúcula) que ayudan al hígado a metabolizar los estrógenos crecientes.`;
-      movementAdvice = `Excelente ventana para entrenamientos dinámicos: pilates reformer/mat, cardio moderado, danza o rutinas de fuerza progresiva.`;
-      emotionalAdvice = `Tu mente está receptiva a nuevos proyectos, aprendizaje y creatividad. ¡Aprovecha este impulso de optimismo!`;
-      hydrationSleepAdvice = `Meta: 2.4L de agua con electrolitos naturales (una pizca de sal marina y limón).`;
+      energyAdvice = `¡Tus baterías se están llenando a tope! Te vas a sentir más despierta, motivada, con ganas de salir, crear y con una vibra súper bonita y fresca.`;
+      nutritionAdvice = `Alimentos frescos y coloridos: yogur con fruta, frutos secos y ensaladas ricas. Tu digestión está ligera y tu piel empezará a verse más radiante.`;
+      movementAdvice = `¡Es tu momento de brillar! Ideal para bailar, hacer pilates, salir a trotar o entrenar con ganas. Tu cuerpo te responderá de maravilla.`;
+      emotionalAdvice = `Tu mente está súper creativa y abierta. Excelente momento para planear citas divertidas, proyectos o aprender algo nuevo.`;
+      hydrationSleepAdvice = `Toma tus 2.4L de agüita fresca para mantener esa energía alta y la mente despejada todo el día.`;
     } else if (currentPhase === 'Ovulatoria') {
       phaseBadgeText = `✨ Fase Ovulatoria (Día ${currentDay})`;
       phaseThemeColor = '#7209B7';
-      energyAdvice = `Pico máximo de estrógeno y descarga de hormona luteinizante (LH). Máxima vitalidad física, confianza comunicativa y magnetismo biológico.`;
-      nutritionAdvice = `Alimentos ricos en antioxidantes (arándanos, frutos rojos) y grasas saludables (aguacate, nueces, salmón) para proteger el folículo ovulatorio y la calidad celular.`;
-      movementAdvice = `Tu fuerza y resistencia están en su clímax: levantamiento de pesas, HIIT o carreras cortas. (Si sientes una pequeña puntada ovárica, acompáñala con estiramientos suaves).`;
-      emotionalAdvice = `Excelente momento para reuniones importantes, socializar y expresar tus ideas con total elocuencia y seguridad.`;
-      hydrationSleepAdvice = `Meta: 2.5L de agua fresca.`;
+      energyAdvice = `¡Estás en tu pico máximo de brillo y magnetismo! Te sentirás hermosa, sociable, con la autoestima arriba y toda la vitalidad del mundo.`;
+      nutritionAdvice = `Frutos rojos deliciosos, aguacate, nueces y comida rica que acompañe tu día activo. Tu cuerpo asimila todo súper bien ahora.`;
+      movementAdvice = `Fuerza, baile, cardio o tu deporte favorito. Si sientes un ligero piquetito en los ovarios, es solo tu cuerpo recordándote lo increíble que es.`;
+      emotionalAdvice = `Día perfecto para socializar, compartir con quienes quieres, lucirte en lo que hagas y disfrutar de tu alegría.`;
+      hydrationSleepAdvice = `Mantente fresca tomando 2.5L de agua a lo largo del día.`;
     } else { // Lutea
       phaseBadgeText = `🌙 Fase Lútea (Día ${currentDay})`;
       phaseThemeColor = '#1D3557';
-      energyAdvice = `La progesterona es la hormona dominante. Tu metabolismo basal aumenta ligeramente (+100-200 kcal/día), pero tu sistema nervioso busca introspección y calma.`;
-      nutritionAdvice = `Carbohidratos complejos (camote, avena, arroz integral) para estabilizar la serotonina y prevenir antojos bruscos. Reduce el exceso de sodio para evitar retención de líquidos.`;
-      movementAdvice = `Pilates enfocado en core suave, yoga restaurativo, caminatas al aire libre y estiramientos miofasciales de glúteos y espalda baja.`;
-      emotionalAdvice = `Mayor sensibilidad emocional o necesidad de espacio personal. Practica límites saludables y rutinas de autocuidado nocturno.`;
-      hydrationSleepAdvice = `Meta: 2.3L de agua e infusiones de lavanda o pasiflora antes de dormir. Evita cafeína después de las 3:00 PM.`;
+      energyAdvice = `Tu cuerpo te pide calma y un poquito de mimo. Es la fase previa a tu período, así que es súper válido sentirte más sensible, querer tu espacio o tener más antojitos.`;
+      nutritionAdvice = `Comidas reconfortantes: avena con canela, plátano, camote y un toque de chocolate. Trata de no comer cosas muy saladas para no retener líquidos.`;
+      movementAdvice = `Yoga suavecito, caminatas al aire libre y estiramientos de espalda y caderas. Movimiento que te relaje y te quite la pesadez.`;
+      emotionalAdvice = `Sé súper dulce y comprensiva contigo misma. Si algo te abruma, pon límites sin culpa y regálate tu ritual nocturno favorito.`;
+      hydrationSleepAdvice = `Infusiones relajantes de manzanilla o lavanda antes de acostarte. Deja el café para la mañana para que puedas dormir profundo.`;
     }
 
     // Ajuste adicional si hay síntomas registrados hoy
@@ -7160,11 +7160,11 @@ document.addEventListener('DOMContentLoaded', () => {
       symptomsAdvice = `
         <div class="avatar-spotlight-section-item" style="border-left: 3px solid var(--theme-color, #e63946);">
           <div class="avatar-spotlight-section-label" style="color: var(--primary-crimson);">
-            <span class="material-symbols-outlined" style="font-size: 0.95rem;">healing</span>
-            <span>Ajuste por tus síntomas de hoy (${symptomListStr})</span>
+            <span class="material-symbols-outlined" style="font-size: 0.95rem;">favorite</span>
+            <span>Cuidando lo que sientes hoy (${symptomListStr})</span>
           </div>
           <div class="avatar-spotlight-section-text">
-            ${pet.name} detectó tus registros. Aplica termoterapia local (compresa tibia 15-20 min) y realiza una rutina guiada en el <strong>Centro de Alivio</strong> para liberar tensión miofascial.
+            ${pet.name} vio tus notas de hoy. Ponte una compresa o guatero tibio 15 minutos en el vientre o espalda baja, y haz una rutina suave en el <strong>Centro de Alivio</strong> para quitarte esa molestia rapidito.
           </div>
         </div>
       `;

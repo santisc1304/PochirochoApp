@@ -1601,7 +1601,7 @@ const GeminiConfig = {
       throw new Error('NO_API_KEY');
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3-flash-preview'];
 
     // Construir historial de mensajes en formato Gemini
     const contents = [];
@@ -1644,32 +1644,41 @@ const GeminiConfig = {
       }
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    let lastError = null;
+    for (const modelName of modelsToTry) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeoutId));
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorText}`);
+        if (response.ok) {
+          const data = await response.json();
+          const candidate = data.candidates?.[0];
+          const rawText = candidate?.content?.parts?.[0]?.text;
+          if (rawText && rawText.trim()) {
+            return rawText;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`Gemini (${modelName}) error ${response.status}:`, errText);
+          lastError = new Error(`GEMINI_${response.status}_${modelName}`);
+        }
+      } catch (err) {
+        console.warn(`Gemini (${modelName}) request failed:`, err);
+        lastError = err;
+      }
     }
 
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const rawText = candidate?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      throw new Error('EMPTY_GEMINI_RESPONSE');
-    }
-
-    return rawText;
+    throw lastError || new Error('GEMINI_MODELS_UNAVAILABLE');
   }
 };
 
@@ -7267,11 +7276,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const hydrationTextEl = document.getElementById('avatar-spotlight-hydration-text');
 
     if (aiBtn) {
-      aiBtn.innerHTML = `<span class="material-symbols-outlined avatar-ai-loading-pulse" style="font-size:0.85rem;">smart_toy</span> <span>${pet.name} está pensando...</span>`;
+      aiBtn.innerHTML = `<span class="material-symbols-outlined avatar-ai-loading-pulse" style="font-size:1.15rem; color:#f59e0b;">smart_toy</span>`;
       aiBtn.disabled = true;
+      aiBtn.title = `${pet.name} está pensando con IA...`;
     }
 
-    const symptomsStr = symptoms.length > 0 ? symptoms.join(', ') : 'Ninguno marcado, se siente bien';
+    const symptomsStr = symptoms.length > 0 ? symptoms.join(', ') : 'Tranquila y sin molestias marcadas';
 
     const prompt = `Eres ${pet.name}, la tierna, cariñosa y atenta mascota virtual de la app de bienestar Pochirocho.
 Estás hablando directamente con tu usuaria favorita de forma dulce, amorosa y con CERO tecnicismos médicos.
@@ -7312,17 +7322,24 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
         if (hydrationTextEl) hydrationTextEl.textContent = aiData.hidratacion_sueno || aiData.hidratacion;
 
         if (aiBtn) {
-          aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:0.85rem; color:#a78bfa;">sparkles</span> <span>Creado con IA • 🔄</span>`;
-          aiBtn.disabled = false;
+          aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.15rem; color:#10b981;">check</span>`;
+          setTimeout(() => {
+            if (aiBtn) {
+              aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.15rem; color:#a78bfa;">refresh</span>`;
+              aiBtn.title = `Regenerar consejo de ${pet.name} con IA`;
+              aiBtn.disabled = false;
+            }
+          }, 1200);
         }
         return;
       }
     } catch (err) {
-      console.warn('IA Avatar: usando motor dinámico diario:', err);
+      console.warn('IA Avatar: no se pudo generar con Gemini, usando consejo dinámico:', err);
     }
 
     if (aiBtn) {
-      aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:0.85rem; color:#fbbf24;">sparkles</span> <span>✨ Conectar con IA</span>`;
+      aiBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.15rem; color:#f59e0b;">auto_awesome</span>`;
+      aiBtn.title = `Generar consejo con IA de ${pet.name}`;
       aiBtn.disabled = false;
     }
   };
@@ -7405,13 +7422,12 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
               <span class="material-symbols-outlined" style="color: ${dayAdvice.phaseThemeColor}; font-size: 1.15rem;">auto_awesome</span>
               <span>Consejo de ${pet.name}</span>
             </div>
-            <div style="display:flex; align-items:center; gap:0.45rem;">
-              <button class="avatar-ai-badge-btn" id="avatar-spotlight-ai-btn" onclick="requestAIAvatarAdvice(true)" title="Generar con Inteligencia Artificial">
-                <span class="material-symbols-outlined" style="font-size:0.85rem; color: #fbbf24;">sparkles</span>
-                <span>${isFromAI ? 'Creado con IA • 🔄' : '✨ Conectar con IA'}</span>
+            <div style="display:flex; align-items:center; gap:0.45rem; flex-shrink:0;">
+              <button class="avatar-ai-icon-btn" id="avatar-spotlight-ai-btn" onclick="requestAIAvatarAdvice(true)" title="${isFromAI ? 'Regenerar con IA de ' + pet.name : 'Generar consejo con IA de ' + pet.name}">
+                <span class="material-symbols-outlined" id="avatar-spotlight-ai-icon" style="font-size:1.15rem; color:${isFromAI ? '#a78bfa' : '#f59e0b'};">${isFromAI ? 'refresh' : 'auto_awesome'}</span>
               </button>
-              <button class="modal-close-icon-btn" onclick="closeAvatarRecommendationsModal()" title="Cerrar" style="background:none; border:none; color:#ffffff; cursor:pointer;">
-                <span class="material-symbols-outlined" style="font-size: 1.2rem;">close</span>
+              <button class="modal-close-icon-btn" onclick="closeAvatarRecommendationsModal()" title="Cerrar" style="background:none; border:none; color:#ffffff; cursor:pointer; display:flex; align-items:center; padding:4px;">
+                <span class="material-symbols-outlined" style="font-size: 1.25rem;">close</span>
               </button>
             </div>
           </div>

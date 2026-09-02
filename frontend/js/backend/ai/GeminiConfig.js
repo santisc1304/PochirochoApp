@@ -38,7 +38,7 @@ export const GeminiConfig = {
       throw new Error('NO_API_KEY');
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3-flash-preview'];
 
     // Construir historial de mensajes en formato Gemini
     const contents = [];
@@ -81,31 +81,40 @@ export const GeminiConfig = {
       }
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    let lastError = null;
+    for (const modelName of modelsToTry) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeoutId));
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorText}`);
+        if (response.ok) {
+          const data = await response.json();
+          const candidate = data.candidates?.[0];
+          const rawText = candidate?.content?.parts?.[0]?.text;
+          if (rawText && rawText.trim()) {
+            return rawText;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`Gemini (${modelName}) error ${response.status}:`, errText);
+          lastError = new Error(`GEMINI_${response.status}_${modelName}`);
+        }
+      } catch (err) {
+        console.warn(`Gemini (${modelName}) request failed:`, err);
+        lastError = err;
+      }
     }
 
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const rawText = candidate?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      throw new Error('EMPTY_GEMINI_RESPONSE');
-    }
-
-    return rawText;
+    throw lastError || new Error('GEMINI_MODELS_UNAVAILABLE');
   }
 };

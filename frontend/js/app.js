@@ -6429,36 +6429,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   ];
 
-  // AI MULTI-SESSION CONVERSATION STORAGE
-  let aiConversations = [
-    {
-      id: 'conv-1',
-      title: 'Consulta General & Fase Ovulatoria',
-      date: '05 Ago 2026',
-      messages: [
-        {
-          sender: 'spike',
-          text: '¡Hola! Soy **Manola 🦔**, tu asistente en simbiosis orgánica. Estoy sincronizado en tiempo real con tu **Fase Ovulatoria (Día 14)**. ¿En qué te puedo acompañar hoy?'
+  // =========================================================================
+  // AI MULTI-SESSION CONVERSATION STORAGE (Máximo 10 chats con persistencia en localStorage)
+  // =========================================================================
+  const MAX_AI_CONVERSATIONS = 10;
+
+  function loadAIConversationsFromStorage() {
+    try {
+      const stored = localStorage.getItem('pochirocho_ai_conversations');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, MAX_AI_CONVERSATIONS);
         }
-      ]
-    },
-    {
-      id: 'conv-2',
-      title: 'Alivio de Cólicos & Espalda Baja',
-      date: '03 Ago 2026',
-      messages: [
-        {
-          sender: 'user',
-          text: '¿Por qué me dolía tanto la espalda baja antes del período?'
-        },
-        {
-          sender: 'spike',
-          text: '**Explicación Fisiológica:** El dolor lumbar durante la **Fase Premenstrual** ocurre por la contracción del ligamento uterino y la congestión pélvica ligera.\n\n**💡 Recomendación:** Realizar la rutina *"Deep Lumbar Massage"* en el centro de alivio y usar compresas tibias ☕'
-        }
-      ]
+      }
+    } catch(e) {
+      console.warn('Error al cargar conversaciones de IA desde almacenamiento:', e);
     }
-  ];
-  let currentConversationId = 'conv-1';
+    return [
+      {
+        id: 'conv-1',
+        title: 'Consulta General & Bienestar',
+        date: 'Hoy',
+        messages: [
+          {
+            sender: 'spike',
+            text: '¡Hola! Soy tu asistente de salud en simbiosis orgánica. ¿En qué te puedo acompañar hoy?'
+          }
+        ]
+      }
+    ];
+  }
+
+  function saveAIConversationsToStorage() {
+    try {
+      if (aiConversations.length > MAX_AI_CONVERSATIONS) {
+        aiConversations = aiConversations.slice(0, MAX_AI_CONVERSATIONS);
+      }
+      localStorage.setItem('pochirocho_ai_conversations', JSON.stringify(aiConversations));
+    } catch(e) {
+      console.warn('Error al guardar conversaciones de IA en almacenamiento:', e);
+    }
+  }
+
+  let aiConversations = loadAIConversationsFromStorage();
+  let currentConversationId = aiConversations[0]?.id || 'conv-1';
 
   // CALENDAR ENGINE STATE
   const todayDate = new Date();
@@ -7969,7 +7984,7 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
           </button>
           <button class="btn-history-chats" onclick="openAIHistoryModal()">
             <span class="material-symbols-outlined" style="font-size: 1rem;">history</span>
-            Historial (${aiConversations.length})
+            Historial (${aiConversations.length}/${MAX_AI_CONVERSATIONS})
           </button>
         </div>
 
@@ -8022,32 +8037,80 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
       messages: [{ sender: 'pet', text: `¡Hola de nuevo! Soy **${pet.name}**. He abierto un **nuevo hilo de conversación** para ti en tu Fase ${displayPhase}. ${pet.quotes.trackerGreeting} ¿De qué tema de tu salud deseas hablar hoy?` }]
     };
     aiConversations.unshift(newConv);
+    if (aiConversations.length > MAX_AI_CONVERSATIONS) {
+      aiConversations = aiConversations.slice(0, MAX_AI_CONVERSATIONS);
+    }
     currentConversationId = newId;
+    saveAIConversationsToStorage();
     renderAIAgentView();
   };
 
   window.openAIHistoryModal = function() {
     const pet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
     modalTitleIcon.textContent = 'history';
-    modalTitle.textContent = 'Conversaciones Anteriores';
+    modalTitle.textContent = `Historial de Conversaciones (${aiConversations.length}/${MAX_AI_CONVERSATIONS})`;
     modalBody.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-        <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.2rem;">Selecciona cualquier conversación anterior para revisar sus detalles o continuar chateando con ${pet.name}:</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+          <p style="font-size: 0.74rem; color: #94a3b8; margin: 0;">Selecciona una conversación para continuar o elimínala si deseas liberar espacio:</p>
+          <span style="font-size: 0.68rem; font-weight: 700; color: #cbd5e1; background: rgba(255,255,255,0.06); padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap; margin-left: 0.5rem;">${aiConversations.length}/10</span>
+        </div>
         ${aiConversations.map(conv => `
-          <div class="ai-history-card-item ${conv.id === currentConversationId ? 'active-chat' : ''}" onclick="selectAIConversation('${conv.id}')">
-            <div style="display: flex; align-items: center; gap: 0.65rem;">
-              <span style="font-size: 1.3rem;">💬</span>
-              <div style="display: flex; flex-direction: column;">
-                <span style="font-family: var(--font-heading); font-size: 0.8rem; font-weight: 700; color: #ffffff;">${conv.title}</span>
+          <div class="ai-history-card-item ${conv.id === currentConversationId ? 'active-chat' : ''}" onclick="selectAIConversation('${conv.id}')" style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem;">
+            <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+              <span style="font-size: 1.3rem; flex-shrink: 0;">💬</span>
+              <div style="display: flex; flex-direction: column; min-width: 0;">
+                <span style="font-family: var(--font-heading); font-size: 0.8rem; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${conv.title}</span>
                 <span style="font-size: 0.68rem; color: #cbd5e1;">${conv.messages.length} mensajes • ${conv.date}</span>
               </div>
             </div>
-            ${conv.id === currentConversationId ? '<span style="font-size: 0.7rem; font-weight:700; color: var(--purple-accent);">Activo</span>' : ''}
+            <div style="display: flex; align-items: center; gap: 0.45rem; flex-shrink: 0;">
+              ${conv.id === currentConversationId ? '<span style="font-size: 0.68rem; font-weight:700; color: var(--purple-accent); background: rgba(168,85,247,0.15); border: 1px solid var(--purple-accent); padding: 0.15rem 0.45rem; border-radius: 8px;">Activo</span>' : ''}
+              <button onclick="deleteAIConversation('${conv.id}', event)" title="Eliminar conversación" style="background: rgba(230, 57, 70, 0.15); border: 1px solid rgba(230, 57, 70, 0.35); border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ff758f; transition: all 0.2s ease;">
+                <span class="material-symbols-outlined" style="font-size: 1rem; pointer-events: none;">delete</span>
+              </button>
+            </div>
           </div>
         `).join('')}
       </div>
     `;
     modalOverlay.classList.add('active');
+  };
+
+  window.deleteAIConversation = function(convId, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    const idx = aiConversations.findIndex(c => c.id === convId);
+    if (idx === -1) return;
+
+    aiConversations.splice(idx, 1);
+
+    // Si nos quedamos sin conversaciones, crear una nueva conversación limpia
+    if (aiConversations.length === 0) {
+      const pet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
+      const displayPhase = userCycleState.currentPhase || 'Ovulatoria';
+      const freshId = `conv-${Date.now()}`;
+      aiConversations.push({
+        id: freshId,
+        title: 'Nueva Conversación',
+        date: 'Hoy',
+        messages: [{ sender: 'pet', text: `¡Hola de nuevo! Soy **${pet.name}**. He abierto un **nuevo hilo de conversación** para ti en tu Fase ${displayPhase}. ${pet.quotes.trackerGreeting} ¿De qué tema de tu salud deseas hablar hoy?` }]
+      });
+      currentConversationId = freshId;
+    } else if (currentConversationId === convId) {
+      // Si la conversación eliminada era la activa, activar la primera
+      currentConversationId = aiConversations[0].id;
+    }
+
+    saveAIConversationsToStorage();
+    renderAIAgentView();
+    openAIHistoryModal();
+    if (typeof showInAppInfoToast === 'function') {
+      showInAppInfoToast('Conversación Eliminada', 'Se eliminó la conversación del historial.', '🗑️');
+    }
   };
 
   window.selectAIConversation = function(convId) {
@@ -8103,6 +8166,7 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
     }
 
     activeConv.messages.push({ sender: 'user', text: text });
+    saveAIConversationsToStorage();
     renderAIAgentView();
 
     const feed = document.getElementById('ai-chat-feed');
@@ -8174,6 +8238,7 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
       }
 
       activeConv.messages.push({ sender: 'spike', text: formattedMessageText });
+      saveAIConversationsToStorage();
       renderAIAgentView();
     }, 200);
   };

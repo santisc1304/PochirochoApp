@@ -552,28 +552,40 @@ export class SpotifyPsychoacousticEngine {
       // Intento 4: Búsqueda dinámica en Spotify según el tempo y estado de la fase
       if (tracks.length === 0) {
         const searchKeyword = isCalmPhase
-          ? 'calm acoustic piano soft'
-          : (phase.toLowerCase().includes('folicular') ? 'pop upbeat positive' : 'dance pop vital energy');
+          ? 'calm acoustic'
+          : (phase.toLowerCase().includes('folicular') ? 'pop upbeat' : 'dance pop vital');
         try {
-          const searchRes = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=15`);
+          const searchRes = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=20`);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
-            tracks = searchData.tracks?.items || [];
+            tracks = (searchData.tracks?.items || []).filter(t => t && t.name && (t.id || t.uri));
+          }
+        } catch (e) {}
+      }
+
+      // Intento 5: Búsqueda universal directa en Spotify si todo lo anterior devolvió 0
+      if (tracks.length === 0) {
+        try {
+          const universalRes = await spotifyFetch('https://api.spotify.com/v1/search?q=piano%20acoustic%20relax&type=track&limit=10');
+          if (universalRes.ok) {
+            const uData = await universalRes.json();
+            tracks = (uData.tracks?.items || []).filter(t => t && t.name && (t.id || t.uri));
           }
         } catch (e) {}
       }
 
       if (tracks.length === 0) {
         return {
-          isConnected: false,
+          isConnected: true,
           phase,
           acousticTargets,
-          error: 'No se encontraron canciones en Spotify'
+          error: 'No se encontraron pistas disponibles en Spotify Web API'
         };
       }
 
       // Elegir entre los mejores candidatos reales de Spotify
-      const selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
+      const validTracks = tracks.filter(t => t && t.name);
+      const selectedTrack = validTracks[Math.floor(Math.random() * validTracks.length)] || validTracks[0];
       const artistName = selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify';
       const tempo = Math.round(acousticTargets.target_tempo);
       const dynamicReason = this.buildDynamicReason(artistName, selectedTrack.name, phase, symptoms, tempo);

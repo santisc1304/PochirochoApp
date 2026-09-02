@@ -6280,6 +6280,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   // RENDERIZADOR DE LA TARJETA MUSICAL DE SPOTIFY (EN TRACKER DASHBOARD)
   // =========================================================================
+  // =========================================================================
+  // RENDERIZADOR DE LA TARJETA MUSICAL DE SPOTIFY (EN TRACKER DASHBOARD)
+  // =========================================================================
   async function renderSpotifyDashboardCard(animate = false) {
     const cardContainer = document.getElementById('spotify-dashboard-section');
     if (!cardContainer) return;
@@ -6292,7 +6295,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const animClass = animate ? 'animate-spotify-card-entrance' : '';
 
     const isConnected = SpotifyPsychoacousticEngine.isConnected();
-    const recResult = await SpotifyPsychoacousticEngine.getRecommendationForUser(displayPhase, recentSymptoms);
 
     if (!isConnected) {
       cardContainer.innerHTML = `
@@ -6315,43 +6317,71 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
-    } else if (recResult && recResult.track) {
-      const tr = recResult.track;
-      const trackName = tr.name || 'Sintonía Relajante';
-      const trackArtist = tr.artist || 'Música Curada';
-      const reason = (recResult.acousticTargets && recResult.acousticTargets.reasonText) || `Música calibrada a ${recResult.acousticTargets?.target_tempo || 90} BPM para tu Fase ${displayPhase}.`;
-      const tempo = recResult.acousticTargets?.target_tempo ? Math.round(recResult.acousticTargets.target_tempo) : 90;
+      return;
+    }
 
-      cardContainer.innerHTML = `
-        <div class="spotify-recommendation-card spotify-connected ${animClass}">
-          <div class="spotify-card-header">
-            <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
-              <span class="spotify-card-title">Sintonía de ${petName}</span>
+    try {
+      const recResult = await SpotifyPsychoacousticEngine.getRecommendationForUser(displayPhase, recentSymptoms);
+      if (recResult && recResult.track) {
+        const tr = recResult.track;
+        const trackName = tr.name || 'Sintonía de Spotify';
+        const trackArtist = tr.artist || 'Tus Artistas Favoritos';
+        const reason = (recResult.acousticTargets && recResult.acousticTargets.reasonText) || `Música calibrada para tu Fase ${displayPhase}.`;
+        const tempo = recResult.acousticTargets?.target_tempo ? Math.round(recResult.acousticTargets.target_tempo) : 90;
+
+        cardContainer.innerHTML = `
+          <div class="spotify-recommendation-card spotify-connected ${animClass}">
+            <div class="spotify-card-header">
+              <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                <span class="spotify-card-title">Sintonía de ${petName}</span>
+              </div>
+              <span class="spotify-vibe-pill">${tempo} BPM • ${displayPhase}</span>
             </div>
-            <span class="spotify-vibe-pill">${tempo} BPM • ${displayPhase}</span>
-          </div>
 
-          <div class="spotify-track-item-row">
-            <img src="${tr.albumCover || 'assets/ui/spotify_default_cover.png'}" class="spotify-track-cover" alt="${trackName}"/>
-            <div class="spotify-track-details">
-              <span class="spotify-track-name">${trackName}</span>
-              <span class="spotify-track-artist">${trackArtist}</span>
-              <span class="spotify-track-reason">${reason}</span>
+            <div class="spotify-track-item-row">
+              <img src="${tr.albumCover || 'assets/ui/spotify_default_cover.png'}" class="spotify-track-cover" alt="${trackName}"/>
+              <div class="spotify-track-details">
+                <span class="spotify-track-name">${trackName}</span>
+                <span class="spotify-track-artist">${trackArtist}</span>
+                <span class="spotify-track-reason">${reason}</span>
+              </div>
+            </div>
+
+            <div class="spotify-card-actions">
+              <button class="btn-spotify-play" onclick="playSpotifySongAndTrack('${tr.spotifyUrl || 'https://open.spotify.com'}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#02040a"><path d="M8 5v14l11-7z"/></svg>
+                <span>Escuchar en Spotify ↗</span>
+              </button>
+              <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard(true)" title="Obtener otra recomendación">
+                <span class="material-symbols-outlined" style="font-size:1rem;">refresh</span>
+              </button>
             </div>
           </div>
-
-          <div class="spotify-card-actions">
-            <button class="btn-spotify-play" onclick="playSpotifySongAndTrack('${tr.spotifyUrl || 'https://open.spotify.com'}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#02040a"><path d="M8 5v14l11-7z"/></svg>
-              <span>Escuchar en Spotify ↗</span>
-            </button>
-            <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard(true)" title="Obtener otra recomendación">
-              <span class="material-symbols-outlined" style="font-size:1rem;">refresh</span>
-            </button>
+        `;
+      } else {
+        cardContainer.innerHTML = `
+          <div class="spotify-recommendation-card spotify-connected ${animClass}">
+            <div class="spotify-card-header">
+              <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                <span class="spotify-card-title">Sintonía de ${petName}</span>
+              </div>
+              <span class="spotify-vibe-pill">Conectado 🟢</span>
+            </div>
+            <p class="spotify-card-desc">
+              Tu cuenta de Spotify está conectada. Haz clic en actualizar para consultar tu recomendación de la Fase ${displayPhase}.
+            </p>
+            <div style="display:flex; justify-content:center; margin-top:0.35rem;">
+              <button class="btn-spotify-connect" onclick="renderSpotifyDashboardCard(true)">
+                <span>🔄 Cargar Recomendación de Spotify</span>
+              </button>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
+    } catch (err) {
+      console.warn('Error al renderizar tarjeta de Spotify:', err);
     }
   }
   window.renderSpotifyDashboardCard = renderSpotifyDashboardCard;
@@ -6390,8 +6420,8 @@ document.addEventListener('DOMContentLoaded', () => {
     enhancedSlab.style.opacity = '';
     enhancedSlab.style.transform = '';
 
-    const spotSec = document.getElementById('spotify-dashboard-section');
-    if (spotSec) spotSec.innerHTML = ''; // Limpiar tarjeta previa para la animación fluida
+    // Renderizar la tarjeta inmediatamente para que NUNCA esté ausente
+    renderSpotifyDashboardCard(false);
 
     enhancedSlab.classList.remove('animate-fall-delayed');
     if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
@@ -6419,7 +6449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trackerAnimTimeouts.push(setTimeout(() => {
       updateAvatarDisplay(null);
       if (avatarSection) avatarSection.classList.remove('animate-full-fluid-entrance');
-      renderSpotifyDashboardCard(true);
+      renderSpotifyDashboardCard(false);
       if (window.resumeParticleCanvas) window.resumeParticleCanvas();
     }, 2600));
   }

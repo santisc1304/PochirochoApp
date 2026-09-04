@@ -2146,6 +2146,8 @@ class SpotifyPsychoacousticEngine {
     }
 
     // Helper fetch con auto-refresco en caso de 401
+    // hadAuthError se activa cuando el token expiró Y no se puede renovar (sin refresh_token válido)
+    let hadAuthError = false;
     const spotifyFetch = async (url) => {
       let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401) {
@@ -2153,6 +2155,9 @@ class SpotifyPsychoacousticEngine {
         if (refreshedToken) {
           token = refreshedToken;
           res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        } else {
+          // No se pudo renovar → token verdaderamente expirado o revocado
+          hadAuthError = true;
         }
       }
       return res;
@@ -2283,11 +2288,12 @@ class SpotifyPsychoacousticEngine {
       }
 
       if (tracks.length === 0) {
+        // Distinguir entre error de autenticación expirada vs. simplemente sin canciones
         return {
-          isConnected: false,
+          isConnected: true,
           phase,
           acousticTargets,
-          error: 'No se encontraron canciones en Spotify'
+          error: hadAuthError ? 'auth_expired' : 'no_tracks'
         };
       }
 
@@ -6766,6 +6772,37 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
       } else {
+        // Determinar tipo de error para mostrar el estado correcto
+        const errorType = recResult?.error || 'no_tracks';
+
+        if (errorType === 'auth_expired') {
+          // Token expirado e irrecuperable → limpiar estado stale y mostrar re-conexión inmediata
+          SpotifyPsychoacousticEngine.disconnect();
+          cardContainer.innerHTML = `
+            <div class="spotify-recommendation-card ${animClass}">
+              <div class="spotify-card-header">
+                <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                  <span class="spotify-card-title">Sintonía de ${petName}</span>
+                </div>
+                <span class="spotify-vibe-pill">Sesión expirada ⚠️</span>
+              </div>
+              <p class="spotify-card-desc">
+                Tu sesión de Spotify expiró. Vuelve a conectar tu cuenta para recibir tu sintonía de la <strong>Fase ${displayPhase}</strong>.
+              </p>
+              <div style="display:flex; justify-content:center; margin-top:0.35rem;">
+                <button class="btn-spotify-connect" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#02040a"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                  <span>Reconectar mi Cuenta de Spotify</span>
+                </button>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        // Caso no_tracks: cuenta conectada y token válido pero sin canciones encontradas
+        // (puede ser historial vacío en Spotify o fallo temporal de la API)
         cardContainer.innerHTML = `
           <div class="spotify-recommendation-card spotify-connected ${animClass}">
             <div class="spotify-card-header">
@@ -6776,11 +6813,14 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="spotify-vibe-pill">Conectado 🟢</span>
             </div>
             <p class="spotify-card-desc">
-              Tu cuenta de Spotify está conectada. Haz clic en actualizar para consultar tu recomendación de la Fase ${displayPhase}.
+              Cuenta conectada. Buscando tu sintonía perfecta para la <strong>Fase ${displayPhase}</strong>...
             </p>
-            <div style="display:flex; justify-content:center; margin-top:0.35rem;">
-              <button class="btn-spotify-connect" onclick="renderSpotifyDashboardCard(true)">
-                <span>🔄 Cargar Recomendación de Spotify</span>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.35rem; align-items:center;">
+              <button class="btn-spotify-connect" id="btn-spotify-load-rec" style="width:100%; box-sizing:border-box;" onclick="reloadSpotifyRecommendation(event)">
+                <span>🔄 Cargar Recomendación</span>
+              </button>
+              <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#64748b; font-size:0.7rem; cursor:pointer; padding:0.15rem 0.4rem; text-decoration:underline; -webkit-appearance:none;">
+                Reconectar cuenta de Spotify
               </button>
             </div>
           </div>
@@ -6791,6 +6831,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   window.renderSpotifyDashboardCard = renderSpotifyDashboardCard;
+
+  /**
+   * Recarga la recomendación de Spotify con estado de carga visual.
+   * Usado por el botón fallback. Renueva el token explícitamente antes de reintentar.
+   */
+  window.reloadSpotifyRecommendation = async function(evt) {
+    if (evt) { try { evt.preventDefault(); evt.stopPropagation(); } catch(e) {} }
+
+    const cardContainer = document.getElementById('spotify-dashboard-section');
+    if (!cardContainer) return;
+
+    // Mostrar estado de carga inmediatamente para dar feedback al usuario
+    const btn = document.getElementById('btn-spotify-load-rec');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ Buscando sintonía...</span>';
+    }
+
+    // Intentar renovar el token explícitamente antes de reintentar
+    try {
+      await SpotifyPsychoacousticEngine.refreshAccessToken();
+    } catch(e) {}
+
+    // Re-renderizar con datos frescos
+    try {
+      await renderSpotifyDashboardCard(false);
+    } catch(e) {
+      console.warn('reloadSpotifyRecommendation error:', e);
+      // Si falla, restaurar el botón para que la usuaria pueda intentar de nuevo
+      const btn2 = document.getElementById('btn-spotify-load-rec');
+      if (btn2) {
+        btn2.disabled = false;
+        btn2.innerHTML = '<span>🔄 Cargar Recomendación</span>';
+      }
+    }
+  };
 
   let isNavigatingToTracker = false;
   let trackerAnimTimeouts = [];

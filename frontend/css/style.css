@@ -2327,6 +2327,13 @@ body {
   background: #ff758f;
 }
 
+.badge-heart-sex {
+  font-family: system-ui, -apple-system, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .dot-symptom {
   background: #ffb950;
 }
@@ -3690,7 +3697,7 @@ body {
 .modal-overlay {
   position: absolute;
   inset: 0;
-  z-index: 100;
+  z-index: 50000;
   background: rgba(2, 4, 10, 0.85);
   backdrop-filter: blur(16px);
   display: flex;
@@ -3819,6 +3826,8 @@ body {
   cursor: pointer;
   background: linear-gradient(135deg, var(--theme-color) 0%, var(--theme-color-dark) 100%);
   color: white;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ==========================================================================
@@ -6053,6 +6062,15 @@ input:checked + .settings-slider:before {
   box-shadow: 0 6px 20px rgba(255, 77, 109, 0.5);
 }
 
+.btn-action:disabled, .btn-action[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #94a3b8 !important;
+}
+
 .ob-btn-flo-file {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -6482,5 +6500,14 @@ input:checked + .settings-slider:before {
 
   .app-view {
     border-radius: 0 !important;
+  }
+
+  .modal-overlay {
+    border-radius: 0 !important;
+  }
+
+  .modal-glass-container {
+    max-height: 92dvh !important;
+    border-radius: 24px !important;
   }
 }

@@ -1,5 +1,5 @@
-// Service Worker de Pochirocho PWA (Cache-first para assets y red para IA)
-const CACHE_NAME = 'pochirocho-pwa-v28';
+// Service Worker de Pochirocho PWA (Network-first para código y assets cacheados)
+const CACHE_NAME = 'pochirocho-pwa-v30';
 const ASSETS_TO_CACHE = [
   '/',
   './',
@@ -90,18 +90,24 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   // Las peticiones a Google Gemini y APIs externas siempre van por red
   if (event.request.url.includes('generativelanguage.googleapis.com') ||
-      event.request.url.includes('spotify.com')) {
+      event.request.url.includes('spotify.com') ||
+      event.request.url.includes('formsubmit.co')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then(networkResponse => {
-        // Cachear dinámicamente recursos estáticos
-        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
+  const url = new URL(event.request.url);
+  const isCodeOrDoc = event.request.mode === 'navigate' ||
+                      url.pathname.endsWith('.html') ||
+                      url.pathname.endsWith('.js') ||
+                      url.pathname.endsWith('.css') ||
+                      url.pathname === '/' ||
+                      url.pathname.endsWith('/');
+
+  if (isCodeOrDoc) {
+    // Network-First para código: asegura que los celulares siempre reciban las últimas funciones y fixes
+    event.respondWith(
+      fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseToCache);
@@ -109,7 +115,28 @@ self.addEventListener('fetch', event => {
         }
         return networkResponse;
       }).catch(() => {
-        return caches.match('./index.html') || caches.match('/') || caches.match('./');
+        return caches.match(event.request).then(cachedResponse => {
+          return cachedResponse || caches.match('./index.html') || caches.match('/') || caches.match('./');
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache-First para imágenes, audios y assets estáticos pesados
+  event.respondWith(
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
       });
     })
   );

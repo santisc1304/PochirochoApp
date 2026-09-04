@@ -5415,6 +5415,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   window.updateDashboardSlabUI = updateDashboardSlabUI;
 
+  function recalculateCycleState() {
+    updateDashboardSlabUI();
+    if (typeof updateAvatarDisplay === 'function') updateAvatarDisplay(null);
+    if (typeof renderSpotifyDashboardCard === 'function') renderSpotifyDashboardCard();
+  }
+  window.recalculateCycleState = recalculateCycleState;
+
   function setCyclePhase(phaseKey, dayNum = null) {
     if (!userCycleState.phaseDetails[phaseKey]) return;
     userCycleState.currentPhase = phaseKey;
@@ -8886,7 +8893,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           <span class="cal-day-number">${d}</span>
           <div class="cal-day-badges">
             ${logItem && logItem.period && logItem.period !== 'Ninguno' ? '<span class="badge-dot dot-period"></span>' : ''}
-            ${logItem && logItem.intimacy ? '<span class="badge-dot dot-sex"></span>' : ''}
+            ${logItem && logItem.intimacy ? `<span class="badge-heart-sex" title="Relación Sexual Registrada (${logItem.intimacyType || 'Íntima'})" style="color: ${phaseInfo.phaseColor}; filter: drop-shadow(0 0 3px ${phaseInfo.phaseColor}); font-size: 0.75rem; line-height: 1; display: inline-block;">♥</span>` : ''}
             ${logItem && logItem.cramps > 0 ? '<span class="badge-dot dot-symptom"></span>' : ''}
           </div>
         </div>
@@ -8924,11 +8931,14 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           <div class="inspector-details-grid">
             <div class="detail-item-box"><span class="detail-item-icon">🩸</span><div class="detail-item-text"><span class="detail-item-label">Sangrado / Flujo</span><span class="detail-item-val">${selectedLog ? selectedLog.period : 'Sin registro'}</span></div></div>
             <div class="detail-item-box"><span class="detail-item-icon">⚡</span><div class="detail-item-text"><span class="detail-item-label">Cólicos</span><span class="detail-item-val">${selectedLog && selectedLog.cramps > 0 ? `Nivel ${selectedLog.cramps}/5` : '0 (Sin dolor)'}</span></div></div>
-            <div class="detail-item-box"><span class="detail-item-icon">💖</span><div class="detail-item-text"><span class="detail-item-label">Intimidad</span><span class="detail-item-val">${selectedLog && selectedLog.intimacy ? 'Registrada' : 'Sin registro'}</span></div></div>
-            <div class="detail-item-box"><span class="detail-item-icon">😊</span><div class="detail-item-text"><span class="detail-item-label">Ánimo</span><span class="detail-item-val">${selectedLog ? selectedLog.mood : 'Tranquila 😌'}</span></div></div>
+            <div class="detail-item-box"><span class="detail-item-icon" style="${selectedLog && selectedLog.intimacy ? `color: ${selectedPhaseInfo.phaseColor};` : ''}">${selectedLog && selectedLog.intimacy ? '♥' : '💖'}</span><div class="detail-item-text"><span class="detail-item-label">Intimidad</span><span class="detail-item-val" style="${selectedLog && selectedLog.intimacy ? `color: ${selectedPhaseInfo.phaseColor}; font-weight: 700;` : ''}">${selectedLog && selectedLog.intimacy ? `${selectedLog.intimacyType || 'Registrada'} ♥` : 'Sin registro'}</span></div></div>
+            <div class="detail-item-box"><span class="detail-item-icon">😊</span><div class="detail-item-text"><span class="detail-item-label">Ánimo</span><span class="detail-item-val">${selectedLog && selectedLog.mood ? selectedLog.mood : 'Tranquila 😌'}</span></div></div>
           </div>
           ${selectedLog && selectedLog.note ? `<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 0.6rem 0.8rem; font-size: 0.75rem; color: #cbd5e1;"><strong>Notas:</strong> "${selectedLog.note}"</div>` : ''}
-          <button class="btn-action" style="padding: 0.75rem; font-size: 0.8rem; width: 100%; border-radius: 18px;" onclick="openModal('symptom-sheet')">✍️ Registrar / Editar Síntomas en este Día</button>
+          ${selectedCalDateStr > formatDateKey(new Date()) 
+            ? `<button type="button" class="btn-action" style="padding: 0.75rem; font-size: 0.8rem; width: 100%; border-radius: 18px;" disabled>🔒 No es posible registrar síntomas en días futuros</button>`
+            : `<button type="button" id="btn-edit-symptoms-cal" class="btn-action" style="padding: 0.75rem; font-size: 0.8rem; width: 100%; border-radius: 18px;" onclick="window.openSymptomSheetForDate && window.openSymptomSheetForDate('${selectedCalDateStr}')" data-cal-date="${selectedCalDateStr}">✍️ Registrar / Editar Síntomas en este Día</button>`
+          }
         </div>
         <div class="future-predictor-card">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -10192,7 +10202,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
   window.handleWheelTabChange = handleWheelTabChange;
 
     // MODAL HANDLER
-  if (btnOpenSymptomSheet) btnOpenSymptomSheet.addEventListener('click', () => openModal('symptom-sheet'));
+  if (btnOpenSymptomSheet) btnOpenSymptomSheet.addEventListener('click', () => openSymptomSheetForDate());
 
   function openModal(type, data = null) {
     modalOverlay.classList.add('active');
@@ -10382,7 +10392,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           <!-- 6. Notas y Diario Personal -->
           <div class="symptom-section-group" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; padding: 0.85rem;">
             <span class="symptom-group-label" style="color: #cbd5e1; font-weight: 800; font-size: 0.85rem;">📝 Notas y Diario Personal del Día:</span>
-            <textarea placeholder="¿Cómo te sentiste hoy? Escribe libremente aquí..." style="width: 100%; height: 70px; margin-top: 0.4rem; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: white; font-size: 0.78rem; resize: none;"></textarea>
+            <textarea id="symptom-notes-input" placeholder="¿Cómo te sentiste hoy? Escribe libremente aquí..." style="width: 100%; height: 70px; margin-top: 0.4rem; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: white; font-size: 0.78rem; resize: none;"></textarea>
           </div>
 
           <button type="submit" class="btn-action" style="width: 100%; padding: 0.9rem; font-size: 0.9rem; margin-top: 0.4rem; background: linear-gradient(135deg, var(--rose-accent), var(--gold-accent)); border: none; border-radius: 18px; color: #02040a; font-weight: 800; cursor: pointer;">
@@ -10394,6 +10404,137 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
   }
 
   function closeModal() { modalOverlay.classList.remove('active'); }
+
+  let currentEditingDateStr = null;
+
+  window.openSymptomSheetForDate = function(dateStr) {
+    try {
+      currentEditingDateStr = dateStr || formatDateKey(new Date());
+      openModal('symptom-sheet');
+      
+      // Update title with date
+      const parts = currentEditingDateStr.split('-');
+      const m = parseInt(parts[1], 10) - 1;
+      const modalTitle = document.getElementById('modal-title');
+      if (modalTitle && !isNaN(m)) modalTitle.textContent = `Registrar Detalles • ${parts[2]} de ${monthNames[m]}`;
+
+
+    // Reset everything first
+    document.querySelectorAll('#symptom-form .symptom-toggle-btn.selected').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('#symptom-form input[type="range"]').forEach(i => i.value = (i.id === 'estres' ? 1 : 0));
+    document.getElementById('val-colicos-txt').textContent = 'Nivel 0/5';
+    document.getElementById('val-senos-txt').textContent = 'Nivel 0/5';
+    document.getElementById('val-espalda-txt').textContent = 'Nivel 0/5';
+    document.getElementById('val-estres-txt').textContent = 'Nivel 1/5';
+    document.getElementById('box-senos').style.display = 'none';
+    document.getElementById('box-espalda').style.display = 'none';
+    document.getElementById('box-colicos').style.display = 'none';
+    const periodBtn = document.getElementById('btn-start-period');
+    if (periodBtn) {
+      periodBtn.style.background = 'rgba(230, 57, 70, 0.25)';
+      periodBtn.textContent = '🩸 Registrar Inicio de Período (Actualizar a Día 1)';
+    }
+    const notesInput = document.getElementById('symptom-notes-input');
+    if (notesInput) notesInput.value = '';
+
+    const log = loggedDaysData[currentEditingDateStr];
+    
+    // Default selects
+    const flowSectionBtns = document.querySelectorAll('#symptom-form .symptom-section-group:nth-child(1) .symptom-toggle-btn:not(#btn-start-period)');
+    const intimacyBtns = document.querySelectorAll('#symptom-form .symptom-section-group:nth-child(5) > div:nth-of-type(2) .symptom-toggle-btn');
+    
+    if (log) {
+      // Flow
+      let foundFlow = false;
+      flowSectionBtns.forEach(b => {
+        if (b.textContent.trim() === log.period) { b.classList.add('selected'); foundFlow = true; }
+      });
+      if (!foundFlow && flowSectionBtns.length > 0) flowSectionBtns[0].classList.add('selected'); // Ninguno
+
+      // Start Period
+      if ((log.isPeriodStart || userProfile.lmpFecha === currentEditingDateStr) && periodBtn) {
+        periodBtn.classList.add('selected');
+        periodBtn.style.background = 'var(--primary-crimson)';
+        periodBtn.textContent = '✓ Inicio de Período Registrado (Día 1)';
+      }
+
+      // Pain Sliders
+      const checkSlider = (val, boxId, txtId, name) => {
+        if (val > 0) {
+          const btn = document.querySelector(`.symptom-toggle-btn[onclick*="${boxId}"]`);
+          if (btn) btn.classList.add('selected');
+          const box = document.getElementById(boxId);
+          if (box) {
+            box.style.display = 'flex';
+            const input = box.querySelector('input');
+            if (input) input.value = val;
+          }
+          const txt = document.getElementById(txtId);
+          if (txt) txt.textContent = `Nivel ${val}/5`;
+        }
+      };
+      checkSlider(log.cramps || 0, 'box-colicos', 'val-colicos-txt', 'Cólicos');
+      checkSlider(log.breastPain || 0, 'box-senos', 'val-senos-txt', 'Senos');
+      checkSlider(log.backPain || 0, 'box-espalda', 'val-espalda-txt', 'Espalda');
+
+      // Stress Slider
+      const stressLvl = log.stressLevel !== undefined ? log.stressLevel : (log.stress === 'Alto' ? 4 : (log.stress === 'Moderado' ? 2 : 1));
+      const estresBtn = document.querySelector(`.symptom-toggle-btn[onclick*="box-estres"]`);
+      if (estresBtn) estresBtn.classList.add('selected');
+      const boxEstres = document.getElementById('box-estres');
+      if (boxEstres) {
+        boxEstres.style.display = 'flex';
+        const estresInput = boxEstres.querySelector('input');
+        if (estresInput) estresInput.value = stressLvl;
+      }
+      const estresTxt = document.getElementById('val-estres-txt');
+      if (estresTxt) estresTxt.textContent = `Nivel ${stressLvl}/5`;
+
+      // Symptoms and general toggles
+      const allToggles = document.querySelectorAll('#symptom-form .symptom-toggle-btn');
+      allToggles.forEach(b => {
+        const text = b.textContent.trim();
+        if (log.symptoms && log.symptoms.includes(text)) {
+          b.classList.add('selected');
+        } else if (log.mood === text) {
+          b.classList.add('selected');
+        } else if (log.cervicalMucus === text) {
+          b.classList.add('selected');
+        } else if (log.libido === text) {
+          b.classList.add('selected');
+        }
+      });
+
+      // Intimacy
+      if (log.intimacy) {
+        if (log.intimacyType === 'Sin Protección' || (log.symptoms && log.symptoms.includes('⚠️ Sin Protección'))) {
+          intimacyBtns.forEach(b => { if (b.textContent.includes('Sin Protección')) b.classList.add('selected'); });
+        } else {
+          intimacyBtns.forEach(b => { if (b.textContent.includes('Con Protección')) b.classList.add('selected'); });
+        }
+      } else {
+        intimacyBtns.forEach(b => { if (b.textContent.includes('Sin Relaciones')) b.classList.add('selected'); });
+      }
+      if (notesInput && log.note) notesInput.value = log.note;
+    } else {
+      if (flowSectionBtns.length > 0) flowSectionBtns[0].classList.add('selected');
+      if (intimacyBtns.length > 0) intimacyBtns[0].classList.add('selected');
+    }
+    } catch (err) {
+      console.error('Error opening symptom sheet:', err);
+    }
+  };
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#btn-edit-symptoms-cal, button[data-cal-date]');
+    if (btn && !btn.disabled) {
+      e.preventDefault();
+      const d = btn.getAttribute('data-cal-date') || (typeof selectedCalDateStr !== 'undefined' ? selectedCalDateStr : null);
+      if (typeof window.openSymptomSheetForDate === 'function') {
+        window.openSymptomSheetForDate(d);
+      }
+    }
+  });
 
   if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
   if (modalOverlay) {
@@ -10449,36 +10590,73 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
     // Extraer y persistir síntomas seleccionados en el perfil
     const selectedSymptoms = Array.from(document.querySelectorAll('#symptom-form .symptom-toggle-btn.selected')).map(b => b.textContent.trim());
-    userProfile.sintomasHoy = selectedSymptoms;
 
     // Extraer valores estructurados para el registro clínico del calendario
-    const flowBtn = document.querySelector('#symptom-form .symptom-section-group:nth-child(1) .symptom-toggle-btn.selected');
+    const flowBtn = document.querySelector('#symptom-form .symptom-section-group:nth-child(1) .symptom-toggle-btn:not(#btn-start-period).selected');
     const flowVal = flowBtn ? flowBtn.textContent.trim() : 'Ninguno';
 
-    const colicosInput = document.querySelector('#box-colicos input[type="range"]');
     const colicosSelected = document.querySelector('.symptom-toggle-btn[onclick*="box-colicos"]')?.classList.contains('selected');
+    const colicosInput = document.querySelector('#box-colicos input[type="range"]');
     const crampsVal = colicosSelected && colicosInput ? parseInt(colicosInput.value, 10) : 0;
+    
+    const senosSelected = document.querySelector('.symptom-toggle-btn[onclick*="box-senos"]')?.classList.contains('selected');
+    const senosInput = document.querySelector('#box-senos input[type="range"]');
+    const breastPainVal = senosSelected && senosInput ? parseInt(senosInput.value, 10) : 0;
+    
+    const espaldaSelected = document.querySelector('.symptom-toggle-btn[onclick*="box-espalda"]')?.classList.contains('selected');
+    const espaldaInput = document.querySelector('#box-espalda input[type="range"]');
+    const backPainVal = espaldaSelected && espaldaInput ? parseInt(espaldaInput.value, 10) : 0;
 
     const estresInput = document.querySelector('#box-estres input[type="range"]');
     const estresVal = estresInput ? parseInt(estresInput.value, 10) : 1;
     const stressLabel = estresVal >= 4 ? 'Alto' : (estresVal >= 2 ? 'Moderado' : 'Bajo');
 
-    const isIntimacy = selectedSymptoms.some(s => s.toLowerCase().includes('intimidad') || s.toLowerCase().includes('protección') || s.toLowerCase().includes('proteccion'));
-    const moodSelected = selectedSymptoms.find(s => s.includes('😌') || s.includes('😊') || s.includes('✨') || s.includes('🥺') || s.includes('😤') || s.includes('😴') || s.includes('Tranquila') || s.includes('Feliz')) || 'Tranquila 😌';
+    // Intimacy detection
+    let isIntimacy = false;
+    let intimacyType = 'Sin Relaciones';
+    const intimacyBtns = document.querySelectorAll('#symptom-form .symptom-section-group:nth-child(5) > div:nth-of-type(2) .symptom-toggle-btn.selected');
+    if (intimacyBtns.length > 0) {
+      if (intimacyBtns[0].textContent.includes('Con Protección')) { isIntimacy = true; intimacyType = 'Con Protección'; }
+      else if (intimacyBtns[0].textContent.includes('Sin Protección')) { isIntimacy = true; intimacyType = 'Sin Protección'; }
+    } else if (selectedSymptoms.some(s => s.toLowerCase().includes('intimidad') || s.toLowerCase().includes('protección') || s.toLowerCase().includes('proteccion'))) {
+      isIntimacy = true;
+      intimacyType = 'Registrada';
+    }
+
+    const moodSelected = selectedSymptoms.find(s => s.includes('😌') || s.includes('😊') || s.includes('✨') || s.includes('🥺') || s.includes('😤') || s.includes('😴') || s.includes('Tranquila') || s.includes('Feliz') || s.includes('Irritable') || s.includes('Triste') || s.includes('Ansiedad')) || 'Tranquila 😌';
+    
+    const cervicalBtn = document.querySelector('#symptom-form .symptom-section-group:nth-child(4) .symptom-toggle-btn.selected');
+    const cervicalMucusVal = cervicalBtn ? cervicalBtn.textContent.trim() : null;
+
+    const libidoBtn = document.querySelector('#symptom-form .symptom-section-group:nth-child(5) > div:nth-of-type(1) .symptom-toggle-btn.selected');
+    const libidoVal = libidoBtn ? libidoBtn.textContent.trim() : null;
+
     const notesInput = document.getElementById('symptom-notes-input');
     const noteText = notesInput ? notesInput.value.trim() : '';
 
-    const targetDateKey = selectedCalDateStr || formatDateKey(new Date());
+    const targetDateKey = currentEditingDateStr || selectedCalDateStr || formatDateKey(new Date());
+    const isPeriodStart = periodBtn && periodBtn.classList.contains('selected');
+
+    if (targetDateKey === formatDateKey(new Date())) {
+      userProfile.sintomasHoy = selectedSymptoms;
+    }
 
     // Guardar en la base de datos real del calendario
     loggedDaysData[targetDateKey] = {
       period: flowVal,
       cramps: crampsVal,
+      breastPain: breastPainVal,
+      backPain: backPainVal,
       intimacy: isIntimacy,
+      intimacyType: intimacyType,
       mood: moodSelected,
       stress: stressLabel,
+      stressLevel: estresVal,
+      cervicalMucus: cervicalMucusVal,
+      libido: libidoVal,
       symptoms: selectedSymptoms,
       note: noteText,
+      isPeriodStart: isPeriodStart,
       timestamp: Date.now()
     };
 
@@ -10534,6 +10712,9 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
         localStorage.setItem('pochirocho_cycle_history', JSON.stringify(cycleHistory));
         localStorage.setItem('pochirocho_user_profile', JSON.stringify(userProfile.toJSON()));
       } catch(e) {}
+
+      recalculateCycleState();
+
 
       setCyclePhase('Menstrual', 1);
       if (cycleDayHeading) cycleDayHeading.textContent = 'Día 1';
@@ -10903,7 +11084,13 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
     reader.onload = function(e) {
       const content = e.target.result;
-      const parseRes = FloSyncEngine.parseFloCSV(content);
+      
+      let parseRes = null;
+      if (file.name.toLowerCase().endsWith('.json')) {
+        parseRes = FloSyncEngine.parseFloJSON(content);
+      } else {
+        parseRes = FloSyncEngine.parseFloCSV(content);
+      }
 
       if (parseRes && parseRes.totalEntries > 0) {
         const res = FloSyncEngine.syncFloData(
@@ -10927,6 +11114,8 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           accentColor: '#ff758f',
           duration: 5000
         });
+        
+        recalculateCycleState();
       } else {
         const res = FloSyncEngine.syncFloData(loggedDaysData, userProfile.lmpFecha, userProfile.duracionPromedioCiclo, userProfile.duracionPromedioPeriodo);
         const statusEl = document.getElementById('settings-flo-status');
@@ -10934,7 +11123,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
         showInAppToast({
           title: 'Flo Sincronizado 🌸',
-          message: res.message,
+          message: res.message || 'Error al procesar el archivo. Se sincronizó el modelo por defecto.',
           icon: '🌸',
           badgeText: 'Flo Health',
           badgeIcon: 'check_circle',
@@ -11338,7 +11527,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
   // BOOTSTRAP UNIFICADO (NUEVA USUARIA VS RECURRENTE)
   // =========================================================================
   // Procesar Callback de Spotify de inmediato si está presente en la URL
-  if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+  if (typeof window !== 'undefined' && window.location && typeof window.location.search === 'string' && window.location.search.includes('code=')) {
     SpotifyPsychoacousticEngine.handleAuthCallback().then(success => {
       if (success) {
         console.log('✅ Spotify conectado exitosamente.');

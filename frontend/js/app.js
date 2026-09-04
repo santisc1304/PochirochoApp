@@ -8895,6 +8895,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
             ${logItem && logItem.period && logItem.period !== 'Ninguno' ? '<span class="badge-dot dot-period"></span>' : ''}
             ${logItem && logItem.intimacy ? `<span class="badge-heart-sex" title="Relación Sexual Registrada (${logItem.intimacyType || 'Íntima'})" style="color: ${phaseInfo.phaseColor}; filter: drop-shadow(0 0 3px ${phaseInfo.phaseColor}); font-size: 0.75rem; line-height: 1; display: inline-block;">♥</span>` : ''}
             ${logItem && logItem.cramps > 0 ? '<span class="badge-dot dot-symptom"></span>' : ''}
+            ${logItem && (logItem.note || logItem.notes) ? '<span class="badge-dot dot-note" title="Nota diaria registrada" style="background: #38bdf8; box-shadow: 0 0 5px #38bdf8;"></span>' : ''}
           </div>
         </div>
       `;
@@ -8934,7 +8935,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
             <div class="detail-item-box"><span class="detail-item-icon" style="${selectedLog && selectedLog.intimacy ? `color: ${selectedPhaseInfo.phaseColor};` : ''}">${selectedLog && selectedLog.intimacy ? '♥' : '💖'}</span><div class="detail-item-text"><span class="detail-item-label">Intimidad</span><span class="detail-item-val" style="${selectedLog && selectedLog.intimacy ? `color: ${selectedPhaseInfo.phaseColor}; font-weight: 700;` : ''}">${selectedLog && selectedLog.intimacy ? `${selectedLog.intimacyType || 'Registrada'} ♥` : 'Sin registro'}</span></div></div>
             <div class="detail-item-box"><span class="detail-item-icon">😊</span><div class="detail-item-text"><span class="detail-item-label">Ánimo</span><span class="detail-item-val">${selectedLog && selectedLog.mood ? selectedLog.mood : 'Tranquila 😌'}</span></div></div>
           </div>
-          ${selectedLog && selectedLog.note ? `<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 0.6rem 0.8rem; font-size: 0.75rem; color: #cbd5e1;"><strong>Notas:</strong> "${selectedLog.note}"</div>` : ''}
+          ${selectedLog && (selectedLog.note || selectedLog.notes) ? `<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 0.6rem 0.8rem; font-size: 0.75rem; color: #cbd5e1;"><strong>Notas:</strong> "${selectedLog.note || selectedLog.notes}"</div>` : ''}
           ${selectedCalDateStr > formatDateKey(new Date()) 
             ? `<button type="button" class="btn-action" style="padding: 0.75rem; font-size: 0.8rem; width: 100%; border-radius: 18px;" disabled>🔒 No es posible registrar síntomas en días futuros</button>`
             : `<button type="button" id="btn-edit-symptoms-cal" class="btn-action" style="padding: 0.75rem; font-size: 0.8rem; width: 100%; border-radius: 18px;" onclick="window.openSymptomSheetForDate && window.openSymptomSheetForDate('${selectedCalDateStr}')" data-cal-date="${selectedCalDateStr}">✍️ Registrar / Editar Síntomas en este Día</button>`
@@ -10403,7 +10404,10 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
     }
   }
 
-  function closeModal() { modalOverlay.classList.remove('active'); }
+  function closeModal() {
+    modalOverlay.classList.remove('active');
+    currentEditingDateStr = null;
+  }
 
   let currentEditingDateStr = null;
 
@@ -10515,7 +10519,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
       } else {
         intimacyBtns.forEach(b => { if (b.textContent.includes('Sin Relaciones')) b.classList.add('selected'); });
       }
-      if (notesInput && log.note) notesInput.value = log.note;
+      if (notesInput && (log.note || log.notes)) notesInput.value = log.note || log.notes;
     } else {
       if (flowSectionBtns.length > 0) flowSectionBtns[0].classList.add('selected');
       if (intimacyBtns.length > 0) intimacyBtns[0].classList.add('selected');
@@ -10656,6 +10660,7 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
       libido: libidoVal,
       symptoms: selectedSymptoms,
       note: noteText,
+      notes: noteText,
       isPeriodStart: isPeriodStart,
       timestamp: Date.now()
     };
@@ -10730,6 +10735,10 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
         }
       }
     }
+
+    // Sincronizar el día del calendario con la fecha recién editada
+    selectedCalDateStr = targetDateKey;
+    currentEditingDateStr = null;
 
     // Actualizar vista activa si es calendario o análisis
     const trackerSubview = document.getElementById('tracker-subview-content');

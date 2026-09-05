@@ -1,5 +1,5 @@
 // Service Worker de Pochirocho PWA (Network-first para código y assets cacheados)
-const CACHE_NAME = 'pochirocho-pwa-v31';
+const CACHE_NAME = 'pochirocho-pwa-v32';
 const ASSETS_TO_CACHE = [
   '/',
   './',

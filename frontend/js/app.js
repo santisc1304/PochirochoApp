@@ -2277,6 +2277,30 @@ class SpotifyPsychoacousticEngine {
     }
   }
 
+  static async fetchUserProfile(force = false) {
+    if (!force) {
+      const cached = this.getUserProfile();
+      if (cached && (cached.email || cached.id)) return cached;
+    }
+    const token = await this.getValidToken() || this.getStoredToken();
+    if (!token) return null;
+    try {
+      const res = await fetch('https://api.spotify.com/v1/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('pochirocho_spotify_user_profile', JSON.stringify(profile));
+        }
+        return profile;
+      }
+    } catch (e) {
+      console.warn('Error obteniendo perfil de Spotify:', e);
+    }
+    return this.getUserProfile();
+  }
+
   static disconnect(options = {}) {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('pochirocho_spotify_connected');
@@ -3004,6 +3028,10 @@ class SpotifyPsychoacousticEngine {
       report.meApiStatus = resMe.status;
       if (resMe.ok) {
         report.meApiData = await resMe.json();
+        report.profile = report.meApiData;
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('pochirocho_spotify_user_profile', JSON.stringify(report.meApiData));
+        }
       } else {
         try {
           report.meApiError = await resMe.json();
@@ -11082,6 +11110,12 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
                     <span>Dispositivo / iPhone detectado:</span>
                     <strong style="color:${report.isIPhone ? '#38bdf8' : '#e2e8f0'}">${report.isIPhone ? '📱 iPhone (iOS Safari)' : '💻 Navegador Web'}</strong>
                   </div>
+                  ${(report.profile?.email || report.meApiData?.email) ? `
+                  <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(29,185,84,0.1); padding:0.35rem 0.5rem; border-radius:8px; border:1px solid rgba(29,185,84,0.25);">
+                    <span style="color:#6ee7b7; font-weight:700;">Correo de Spotify:</span>
+                    <strong style="color:#1ed760; font-family:monospace; font-size:0.75rem;">${report.profile?.email || report.meApiData?.email}</strong>
+                  </div>
+                  ` : ''}
                   <div style="display:flex; justify-content:space-between;">
                     <span>Token de acceso guardado:</span>
                     <strong style="color:${report.hasAccessToken ? '#4ade80' : '#f87171'}">${report.hasAccessToken ? '✓ Presente en iPhone' : '✗ Ausente'}</strong>
@@ -11690,6 +11724,47 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
   // =========================================================================
   // LOGICA DE LA PANTALLA DE CONFIGURACIÓN & AJUSTES
   // =========================================================================
+  function renderSpotifySettingsAccountBox(isConn, userProf) {
+    if (!isConn) {
+      return `
+        <div style="padding:0.6rem 0.75rem; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.15); border-radius:10px; font-size:0.75rem; color:#94a3b8;">
+          Ninguna cuenta vinculada actualmente.
+        </div>
+      `;
+    }
+    const email = userProf?.email || (isConn ? 'Consultando correo...' : 'No disponible');
+    const name = userProf?.display_name || userProf?.id || 'Usuario';
+    const id = userProf?.id || '';
+
+    return `
+      <div style="padding:0.75rem; background:rgba(2,6,23,0.7); border:1.5px solid rgba(29, 185, 84, 0.4); border-radius:12px; display:flex; flex-direction:column; gap:0.5rem; margin-top:0.4rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.4rem;">
+          <span style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; font-weight:700;">Cuenta de Spotify Vinculada</span>
+          <span style="font-size:0.7rem; color:#1ed760; font-weight:700; background:rgba(29,185,84,0.15); padding:0.15rem 0.5rem; border-radius:6px; border:1px solid rgba(29,185,84,0.3);">🟢 Sesión Activa</span>
+        </div>
+        
+        <div>
+          <div style="font-size:0.72rem; color:#cbd5e1; margin-bottom:0.25rem; font-weight:600; display:flex; align-items:center; gap:0.3rem;">
+            <span>✉️ Correo de la cuenta:</span>
+          </div>
+          <div id="settings-spotify-email" style="font-size:0.86rem; font-weight:800; color:#1ed760; font-family:monospace; word-break:break-all; background:rgba(29,185,84,0.12); padding:0.45rem 0.6rem; border-radius:8px; border:1px solid rgba(29,185,84,0.3);">
+            ${email}
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#cbd5e1; padding-top:0.2rem;">
+          <span>Usuario: <strong id="settings-spotify-name" style="color:#f8fafc;">${name}</strong></span>
+          ${id ? `<span style="font-size:0.68rem; color:#64748b;">ID: <span id="settings-spotify-id" style="font-family:monospace;">${id}</span></span>` : ''}
+        </div>
+
+        <div style="font-size:0.68rem; color:#94a3b8; line-height:1.35; background:rgba(255,255,255,0.04); padding:0.45rem 0.55rem; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+          💡 <em>Verificación: Este es exactamente el correo que debe estar agregado en <strong>Spotify for Developers &gt; Users and Access</strong> para permitir la conexión en modo de desarrollo.</em>
+        </div>
+      </div>
+    `;
+  }
+  window.renderSpotifySettingsAccountBox = renderSpotifySettingsAccountBox;
+
   function openSettingsModal() {
     try {
       let modal = document.getElementById('settings-modal-overlay');
@@ -11784,7 +11859,10 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
             <span>Sintonía Musical Spotify</span>
           </div>
           <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.4rem;">
-            Estado de conexión: <strong id="settings-spotify-status">${isSpotifyConn ? `<span style="color:#1ed760;">🟢 Conectada (${SpotifyPsychoacousticEngine.getUserProfile()?.display_name || SpotifyPsychoacousticEngine.getUserProfile()?.email || 'Cuenta'})</span>` : '<span style="color:#cbd5e1;">⚪ No conectada</span>'}</strong>
+            Estado de conexión: <strong id="settings-spotify-status">${isSpotifyConn ? '<span style="color:#1ed760;">🟢 Conectada</span>' : '<span style="color:#cbd5e1;">⚪ No conectada</span>'}</strong>
+          </div>
+          <div id="settings-spotify-account-box" style="margin-bottom:0.75rem;">
+            ${renderSpotifySettingsAccountBox(isSpotifyConn, SpotifyPsychoacousticEngine.getUserProfile())}
           </div>
           <div id="settings-spotify-btn-slot">
             ${isSpotifyConn ? `
@@ -11977,6 +12055,21 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
       modal.style.display = 'flex';
       modal.classList.add('active');
+
+      if (isSpotifyConn && (!SpotifyPsychoacousticEngine.getUserProfile() || !SpotifyPsychoacousticEngine.getUserProfile()?.email)) {
+        if (typeof SpotifyPsychoacousticEngine.fetchUserProfile === 'function') {
+          SpotifyPsychoacousticEngine.fetchUserProfile().then(p => {
+            if (p) {
+              const emailEl = document.getElementById('settings-spotify-email');
+              if (emailEl) emailEl.textContent = p.email || 'No disponible en el perfil';
+              const nameEl = document.getElementById('settings-spotify-name');
+              if (nameEl) nameEl.textContent = p.display_name || p.id || 'Usuario';
+              const idEl = document.getElementById('settings-spotify-id');
+              if (idEl) idEl.textContent = p.id || '—';
+            }
+          }).catch(e => console.warn('Error refrescando email en settings modal:', e));
+        }
+      }
     } catch (err) {
       console.warn('openSettingsModal error:', err);
     }
@@ -12009,13 +12102,16 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
     const isConn = SpotifyPsychoacousticEngine.isConnected();
     const statusEl = document.getElementById('settings-spotify-status');
     const slotEl = document.getElementById('settings-spotify-btn-slot');
+    const accountBoxEl = document.getElementById('settings-spotify-account-box');
     const userProf = SpotifyPsychoacousticEngine.getUserProfile();
-    const userLabel = userProf?.display_name || userProf?.email || 'Cuenta';
 
     if (statusEl) {
       statusEl.innerHTML = isConn 
-        ? `<span style="color:#1ed760;">🟢 Conectada (${userLabel})</span>` 
+        ? '<span style="color:#1ed760;">🟢 Conectada</span>' 
         : '<span style="color:#cbd5e1;">⚪ No conectada</span>';
+    }
+    if (accountBoxEl && typeof renderSpotifySettingsAccountBox === 'function') {
+      accountBoxEl.innerHTML = renderSpotifySettingsAccountBox(isConn, userProf);
     }
     if (slotEl) {
       slotEl.innerHTML = isConn ? `
@@ -12040,6 +12136,21 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           </button>
         </div>
       `;
+    }
+
+    if (isConn && (!userProf || !userProf.email)) {
+      if (typeof SpotifyPsychoacousticEngine.fetchUserProfile === 'function') {
+        SpotifyPsychoacousticEngine.fetchUserProfile().then(p => {
+          if (p) {
+            const emailEl = document.getElementById('settings-spotify-email');
+            if (emailEl) emailEl.textContent = p.email || 'No disponible en el perfil';
+            const nameEl = document.getElementById('settings-spotify-name');
+            if (nameEl) nameEl.textContent = p.display_name || p.id || 'Usuario';
+            const idEl = document.getElementById('settings-spotify-id');
+            if (idEl) idEl.textContent = p.id || '—';
+          }
+        }).catch(e => console.warn('Error actualizando perfil en settings:', e));
+      }
     }
   };
 

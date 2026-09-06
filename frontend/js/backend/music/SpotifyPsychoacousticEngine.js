@@ -121,6 +121,30 @@ export class SpotifyPsychoacousticEngine {
     }
   }
 
+  static async fetchUserProfile(force = false) {
+    if (!force) {
+      const cached = this.getUserProfile();
+      if (cached && (cached.email || cached.id)) return cached;
+    }
+    const token = await this.getValidToken() || this.getStoredToken();
+    if (!token) return null;
+    try {
+      const res = await fetch('https://api.spotify.com/v1/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('pochirocho_spotify_user_profile', JSON.stringify(profile));
+        }
+        return profile;
+      }
+    } catch (e) {
+      console.warn('Error obteniendo perfil de Spotify:', e);
+    }
+    return this.getUserProfile();
+  }
+
   static disconnect(options = {}) {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('pochirocho_spotify_connected');
@@ -848,6 +872,10 @@ export class SpotifyPsychoacousticEngine {
       report.meApiStatus = resMe.status;
       if (resMe.ok) {
         report.meApiData = await resMe.json();
+        report.profile = report.meApiData;
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('pochirocho_spotify_user_profile', JSON.stringify(report.meApiData));
+        }
       } else {
         try {
           report.meApiError = await resMe.json();

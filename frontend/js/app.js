@@ -2164,190 +2164,7 @@ const GeminiConfig = {
 class SpotifyPsychoacousticEngine {
   static CLIENT_ID = 'fa292c3f485d40a4ba4fa1d17e61dd96'; // Client ID oficial de Spotify
   static REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'http://localhost:8000/';
-  static SCOPES = 'user-top-read user-read-recently-played user-read-playback-state user-library-read';
-
-  // Catálogo Psicoacústico Curado: Garantiza sintonía musical calibrada por fase incluso si la API de Spotify
-  // devuelve 404 por endpoints deprecados o 403 por Development Mode en el Developer Dashboard.
-  static PSYCHOACOUSTIC_CATALOG = {
-    Menstrual: [
-      {
-        id: '6kkwzBDIRLqBWe5yg56gKG',
-        name: 'Weightless',
-        artist: 'Marconi Union',
-        albumName: 'Weightless (Ambient Transmissions)',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273d09a25b1548e6a2b8e3ad59e',
-        spotifyUrl: 'https://open.spotify.com/track/6kkwzBDIRLqBWe5yg56gKG',
-        tempo: 60,
-        reasonText: 'Composición acústica calibrada a 60 BPM para inducir ondas alfa cerebrales, reducir cortisol y calmar cólicos uterinos.'
-      },
-      {
-        id: '1R0a2iIrJGumZ0KbEw0iNX',
-        name: 'Daylight',
-        artist: 'Taylor Swift',
-        albumName: 'Lover',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273e787cffec20aa2a396a61647',
-        spotifyUrl: 'https://open.spotify.com/track/1R0a2iIrJGumZ0KbEw0iNX',
-        tempo: 75,
-        reasonText: 'Textura armónica cálida y envolvente diseñada para elevar la oxitocina y brindar refugio emocional durante tu sangrado.'
-      },
-      {
-        id: '7D080T8IRgfxgSSyaPo9Kd',
-        name: 'Sparks',
-        artist: 'Coldplay',
-        albumName: 'Parachutes',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273de062e7428f869e57be0be05',
-        spotifyUrl: 'https://open.spotify.com/track/7D080T8IRgfxgSSyaPo9Kd',
-        tempo: 72,
-        reasonText: 'Guitarras acústicas suaves y cadencia hipnótica que activan el sistema parasimpático para disipar el cansancio físico.'
-      },
-      {
-        id: '4v1A9Qszr8fE5gVlq4jZ6O',
-        name: 'Banana Pancakes',
-        artist: 'Jack Johnson',
-        albumName: 'In Between Dreams',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b27341ad9cba9bc840502187fcf9',
-        spotifyUrl: 'https://open.spotify.com/track/4v1A9Qszr8fE5gVlq4jZ6O',
-        tempo: 68,
-        reasonText: 'Tonalidad acústica reconfortante que evoca calma hogareña y alivio de la hipersensibilidad corporal en tu Fase Menstrual.'
-      },
-      {
-        id: '6tDDoYIxWvMLTdKpjFbt1K',
-        name: 'telepatía',
-        artist: 'Kali Uchis',
-        albumName: 'Sin Miedo (del Amor y Otros Demonios)',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b2734cf74e8a8647ce56ef8eb025',
-        spotifyUrl: 'https://open.spotify.com/track/6tDDoYIxWvMLTdKpjFbt1K',
-        tempo: 83,
-        reasonText: 'R&B etéreo de tempo moderado que ayuda a relajar la musculatura pélvica sin restar vitalidad a tu día.'
-      }
-    ],
-    Folicular: [
-      {
-        id: '1BxfuPKGuaTgP7aM0fbdwr',
-        name: 'Cruel Summer',
-        artist: 'Taylor Swift',
-        albumName: 'Lover',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273e787cffec20aa2a396a61647',
-        spotifyUrl: 'https://open.spotify.com/track/1BxfuPKGuaTgP7aM0fbdwr',
-        tempo: 105,
-        reasonText: 'Energía pop ascendente que sintoniza con el aumento de estrógenos, estimulando la motivación y la creatividad.'
-      },
-      {
-        id: '0yLdNVWF3Srea0uzk55zFn',
-        name: 'Flowers',
-        artist: 'Miley Cyrus',
-        albumName: 'Endless Summer Vacation',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273f429549123dbe8552764ba1d',
-        spotifyUrl: 'https://open.spotify.com/track/0yLdNVWF3Srea0uzk55zFn',
-        tempo: 118,
-        reasonText: 'Línea de bajo disco-funk que refuerza la independencia, la dopamina y la vitalidad del inicio de tu ciclo.'
-      },
-      {
-        id: '463CkQjx2Zk1yXoBuierM9',
-        name: 'Levitating',
-        artist: 'Dua Lipa',
-        albumName: 'Future Nostalgia',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273bd26ede1ae69327720204931',
-        spotifyUrl: 'https://open.spotify.com/track/463CkQjx2Zk1yXoBuierM9',
-        tempo: 103,
-        reasonText: 'Ritmo vibrante perfecto para acompañar nuevos planes, sesiones de ejercicio y tu renovado dinamismo mental.'
-      },
-      {
-        id: '5OD9r33m42e27DqPzKzH3k',
-        name: 'golden hour',
-        artist: 'JVKE',
-        albumName: 'this is what ____ feels like (Vol. 1-4)',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273a216db8a3f87fb51a545025a',
-        spotifyUrl: 'https://open.spotify.com/track/5OD9r33m42e27DqPzKzH3k',
-        tempo: 94,
-        reasonText: 'Arreglos de piano expansivos que celebran el despertar sensorial y la luminosidad de tu Fase Folicular.'
-      }
-    ],
-    Ovulatoria: [
-      {
-        id: '3rUGC1vUpkMQigIZ3zy2Su',
-        name: 'Greedy',
-        artist: 'Tate McRae',
-        albumName: 'THINK LATER',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b27322fd80276f3d11d332616f73',
-        spotifyUrl: 'https://open.spotify.com/track/3rUGC1vUpkMQigIZ3zy2Su',
-        tempo: 111,
-        reasonText: 'Beats enérgicos y vocales seguras que potencian tu magnetismo social, confianza y pico de libido ovulatoria.'
-      },
-      {
-        id: '1vYXt7VS8qGhaW0alXY79m',
-        name: 'Dance The Night',
-        artist: 'Dua Lipa',
-        albumName: 'Dance The Night (From Barbie The Album)',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b27357ddc3c04225e37a09b3052a',
-        spotifyUrl: 'https://open.spotify.com/track/1vYXt7VS8qGhaW0alXY79m',
-        tempo: 110,
-        reasonText: 'Sonoridad radiante que acompaña la máxima sociabilidad, carisma y celebración del pico fértil.'
-      },
-      {
-        id: '4Dvkj6JhhA12EX05QKi792',
-        name: 'As It Was',
-        artist: 'Harry Styles',
-        albumName: "Harry's House",
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b2732e8f605f6396f42b3b784a91',
-        spotifyUrl: 'https://open.spotify.com/track/4Dvkj6JhhA12EX05QKi792',
-        tempo: 126,
-        reasonText: 'Cadencia ágil y optimista ideal para canalizar tu pico de energía física y expresión interpersonal.'
-      },
-      {
-        id: '5ZjsC929Q3c89E8qj9Jk0N',
-        name: 'Houdini',
-        artist: 'Dua Lipa',
-        albumName: 'Houdini',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273fc5f8e6589304a956ae8e02d',
-        spotifyUrl: 'https://open.spotify.com/track/5ZjsC929Q3c89E8qj9Jk0N',
-        tempo: 117,
-        reasonText: 'Pulsaciones electro-pop magnéticas para sintonizar con la máxima seguridad y poder sensorial de tu ovulación.'
-      }
-    ],
-    Lutea: [
-      {
-        id: '4R2kfaDFslZEMLoQut9Ag5',
-        name: 'cardigan',
-        artist: 'Taylor Swift',
-        albumName: 'folklore',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b27395f754318336a95e85238f4d',
-        spotifyUrl: 'https://open.spotify.com/track/4R2kfaDFslZEMLoQut9Ag5',
-        tempo: 65,
-        reasonText: 'Atmósfera melódica nostálgica y reconfortante para estabilizar la serotonina y apaciguar la reactividad premenstrual.'
-      },
-      {
-        id: '2mgANf0nLz8Zz64Qk5bZ68',
-        name: 'Golden Hour',
-        artist: 'Kacey Musgraves',
-        albumName: 'Golden Hour',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b273d6e5d8ec0c5ecfcf39a3f2db',
-        spotifyUrl: 'https://open.spotify.com/track/2mgANf0nLz8Zz64Qk5bZ68',
-        tempo: 78,
-        reasonText: 'Brisa acústica pacificadora que acompaña el repliegue introspectivo guiado por la progesterona.'
-      },
-      {
-        id: '5Gb9x904mZ2s214f4V8a0x',
-        name: 'Mystery of Love',
-        artist: 'Sufjan Stevens',
-        albumName: 'Call Me by Your Name (Original Motion Picture Soundtrack)',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b2730623d8c19fb7b659c2688006',
-        spotifyUrl: 'https://open.spotify.com/track/5Gb9x904mZ2s214f4V8a0x',
-        tempo: 74,
-        reasonText: 'Cuerdas acústicas sutiles y frecuencias armónicas bajas que desarman la irritabilidad y el estrés premenstrual.'
-      },
-      {
-        id: '0A1t3eK7j7L7uTj0k0r4N7',
-        name: 'Sunsetz',
-        artist: 'Cigarettes After Sex',
-        albumName: 'Cigarettes After Sex',
-        albumCover: 'https://i.scdn.co/image/ab67616d0000b27339798efd48e025f82c40c173',
-        spotifyUrl: 'https://open.spotify.com/track/0A1t3eK7j7L7uTj0k0r4N7',
-        tempo: 70,
-        reasonText: 'Dream-pop aterciopelado para desconectar de la sobreestimulación mental y favorecer un descanso profundo.'
-      }
-    ]
-  };
+  static SCOPES = 'user-top-read user-read-recently-played user-read-playback-state user-library-read user-read-email user-read-private';
 
   static getClientId() {
     if (typeof localStorage !== 'undefined') {
@@ -2451,7 +2268,16 @@ class SpotifyPsychoacousticEngine {
     );
   }
 
-  static disconnect() {
+  static getUserProfile() {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      return JSON.parse(localStorage.getItem('pochirocho_spotify_user_profile') || 'null');
+    } catch(e) {
+      return null;
+    }
+  }
+
+  static disconnect(options = {}) {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('pochirocho_spotify_connected');
       localStorage.removeItem('pochirocho_spotify_access_token');
@@ -2461,11 +2287,48 @@ class SpotifyPsychoacousticEngine {
       localStorage.removeItem('pochirocho_spotify_top_artists');
       localStorage.removeItem('pochirocho_spotify_top_tracks');
       localStorage.removeItem('pochirocho_spotify_liked_tracks');
+      localStorage.removeItem('pochirocho_spotify_saved_albums');
+      localStorage.removeItem('pochirocho_spotify_recent_tracks');
+      localStorage.removeItem('pochirocho_spotify_api_error');
+      localStorage.removeItem('pochirocho_spotify_last_rec');
+      localStorage.removeItem('spotify_code_verifier');
+      ['menstrual', 'folicular', 'ovulatoria', 'lutea'].forEach(ph => {
+        localStorage.removeItem(`pochirocho_sp_rec_idx_${ph}`);
+        localStorage.removeItem(`pochirocho_sp_idx_${ph}`);
+      });
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('spotify_code_verifier');
+    }
+    try {
+      document.cookie = 'spotify_code_verifier=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch(e) {}
+
+    // Si se solicita cerrar sesión en la web de Spotify para permitir conectar otra cuenta limpiamente
+    if (options.logoutSpotifyWeb && typeof window !== 'undefined') {
+      try {
+        const logoutWin = window.open('https://accounts.spotify.com/logout', '_blank', 'width=600,height=500');
+        if (logoutWin) {
+          setTimeout(() => { try { logoutWin.close(); } catch(e) {} }, 2500);
+        }
+      } catch(e) {}
     }
   }
 
   /**
-   * Inicia el flujo de autorización OAuth 2.0 PKCE con Spotify
+   * Cambia de cuenta de Spotify: purga datos locales y abre el diálogo forzado
+   */
+  static async switchAccount() {
+    this.disconnect({ logoutSpotifyWeb: true });
+    setTimeout(() => {
+      this.loginWithSpotify();
+    }, 600);
+  }
+
+  /**
+   * Inicia el flujo de autorización OAuth 2.0 PKCE con Spotify.
+   * show_dialog: 'true' garantiza que Spotify SIEMPRE muestre la pantalla de confirmación
+   * permitiendo cambiar de cuenta de usuario en lugar de auto-conectarse a la anterior.
    */
   static async loginWithSpotify() {
     const codeVerifier = this.generateRandomString(64);
@@ -2483,7 +2346,8 @@ class SpotifyPsychoacousticEngine {
       scope: this.SCOPES,
       redirect_uri: this.getRedirectUri(),
       code_challenge_method: 'S256',
-      code_challenge: codeChallenge
+      code_challenge: codeChallenge,
+      show_dialog: 'true' // Forzar diálogo de login y selección de cuenta
     });
 
     window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
@@ -2558,6 +2422,10 @@ class SpotifyPsychoacousticEngine {
             localStorage.setItem('pochirocho_spotify_refresh_token', data.refresh_token);
           }
           localStorage.setItem('pochirocho_spotify_connected', 'true');
+          try {
+            localStorage.removeItem('spotify_code_verifier');
+            sessionStorage.removeItem('spotify_code_verifier');
+          } catch(e) {}
 
           // Limpiar URL sin recargar
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -2572,56 +2440,77 @@ class SpotifyPsychoacousticEngine {
   }
 
   /**
-   * Descarga el perfil completo y el repertorio histórico (artistas, tracks favoritos y me gusta)
+   * Descarga el perfil completo y la biblioteca musical real de la usuaria
+   * (artistas favoritos en varios rangos, canciones favoritas, guardadas en biblioteca y álbumes)
    */
   static async fetchAndStoreUserProfile() {
     const token = await this.getValidToken() || this.getStoredToken();
     if (!token) return null;
 
+    let profile = null;
     try {
       const res = await fetch('https://api.spotify.com/v1/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 403) {
+        localStorage.setItem('pochirocho_spotify_api_error', '403_FORBIDDEN');
+        return null;
+      }
       if (res.ok) {
-        const profile = await res.json();
+        profile = await res.json();
         localStorage.setItem('pochirocho_spotify_user_profile', JSON.stringify(profile));
+        localStorage.removeItem('pochirocho_spotify_api_error');
       }
 
-      // 1. Artistas favoritos históricos (long_term) y actuales (medium_term)
-      try {
-        let artistsRes = await fetch('https://api.spotify.com/v1/me/top/artists?limit=20&time_range=long_term', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!artistsRes.ok) {
-          artistsRes = await fetch('https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term', {
+      // 1. Artistas favoritos en múltiples rangos de tiempo (medium_term, long_term, short_term)
+      let allArtists = [];
+      const artistIds = new Set();
+      for (let tr of ['medium_term', 'long_term', 'short_term']) {
+        try {
+          const aRes = await fetch(`https://api.spotify.com/v1/me/top/artists?limit=50&time_range=${tr}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-        }
-        if (artistsRes.ok) {
-          const topArtistsData = await artistsRes.json();
-          localStorage.setItem('pochirocho_spotify_top_artists', JSON.stringify(topArtistsData.items || []));
-        }
-      } catch (e) {}
+          if (aRes.ok) {
+            const aData = await aRes.json();
+            (aData.items || []).forEach(art => {
+              if (art && art.id && !artistIds.has(art.id)) {
+                artistIds.add(art.id);
+                allArtists.push(art);
+              }
+            });
+          }
+        } catch(e) {}
+      }
+      if (allArtists.length > 0) {
+        localStorage.setItem('pochirocho_spotify_top_artists', JSON.stringify(allArtists));
+      }
 
-      // 2. Canciones favoritas históricas (top tracks long_term)
-      try {
-        let tracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=long_term', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!tracksRes.ok) {
-          tracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=medium_term', {
+      // 2. Canciones favoritas (top tracks medium_term, long_term, short_term)
+      let allTopTracks = [];
+      const trackIds = new Set();
+      for (let tr of ['medium_term', 'long_term', 'short_term']) {
+        try {
+          const tRes = await fetch(`https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=${tr}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-        }
-        if (tracksRes.ok) {
-          const topTracksData = await tracksRes.json();
-          localStorage.setItem('pochirocho_spotify_top_tracks', JSON.stringify(topTracksData.items || []));
-        }
-      } catch (e) {}
+          if (tRes.ok) {
+            const tData = await tRes.json();
+            (tData.items || []).forEach(trk => {
+              if (trk && trk.id && !trackIds.has(trk.id)) {
+                trackIds.add(trk.id);
+                allTopTracks.push(trk);
+              }
+            });
+          }
+        } catch(e) {}
+      }
+      if (allTopTracks.length > 0) {
+        localStorage.setItem('pochirocho_spotify_top_tracks', JSON.stringify(allTopTracks));
+      }
 
       // 3. Canciones con "Me Gusta" (Liked Songs)
       try {
-        const likedRes = await fetch('https://api.spotify.com/v1/me/tracks?limit=20', {
+        const likedRes = await fetch('https://api.spotify.com/v1/me/tracks?limit=50', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (likedRes.ok) {
@@ -2631,9 +2520,34 @@ class SpotifyPsychoacousticEngine {
         }
       } catch (e) {}
 
+      // 4. Álbumes guardados en la biblioteca (Saved Albums)
+      try {
+        const albumsRes = await fetch('https://api.spotify.com/v1/me/albums?limit=20', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (albumsRes.ok) {
+          const albumsData = await albumsRes.json();
+          const savedAlbums = (albumsData.items || []).map(item => item.album).filter(Boolean);
+          localStorage.setItem('pochirocho_spotify_saved_albums', JSON.stringify(savedAlbums));
+        }
+      } catch (e) {}
+
+      // 5. Escuchadas recientemente (Recently Played)
+      try {
+        const recentRes = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=50', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (recentRes.ok) {
+          const recentData = await recentRes.json();
+          const recentTracks = (recentData.items || []).map(item => item.track).filter(Boolean);
+          localStorage.setItem('pochirocho_spotify_recent_tracks', JSON.stringify(recentTracks));
+        }
+      } catch (e) {}
+
     } catch (err) {
       console.warn('Error al sincronizar biblioteca de Spotify:', err);
     }
+    return profile;
   }
 
   /**
@@ -2725,7 +2639,7 @@ class SpotifyPsychoacousticEngine {
     }
 
     if (hasHeadache) {
-      targets.target_instrumentalness = 0.65; // Menor presencia vocal para evitar fatiga sensorial
+      targets.target_instrumentalness = 0.65;
       targets.max_energy = 0.30;
       targets.isCalmPhase = true;
     }
@@ -2756,29 +2670,30 @@ class SpotifyPsychoacousticEngine {
     }
 
     if (p.includes('menstrual')) {
-      return `Acústica suave a ${tempo} BPM de ${art} diseñada para elevar la oxitocina y brindar alivio uterino en tu Fase Menstrual.`;
+      return `Acústica suave a ${tempo} BPM de ${art} seleccionada de tus favoritos para elevar la oxitocina y brindar alivio en tu Fase Menstrual.`;
     }
     if (p.includes('folicular')) {
-      return `Sonoridad vibrante a ${tempo} BPM de ${art} para potenciar el ascenso natural de tus estrógenos y tu creatividad.`;
+      return `Sonoridad vibrante a ${tempo} BPM de ${art} de tu biblioteca para potenciar el ascenso natural de estrógenos y tu creatividad.`;
     }
     if (p.includes('ovulatoria')) {
       return `Máxima vitalidad y ritmo bailable a ${tempo} BPM de ${art} para acompañar tu pico de confianza y magnetismo ovulatorio.`;
     }
     if (p.includes('lutea') || p.includes('lútea')) {
-      return `Textura melódica envolvente a ${tempo} BPM de ${art} para estabilizar la serotonina y apaciguar la reactividad premenstrual.`;
+      return `Textura melódica reconfortante a ${tempo} BPM de ${art} para estabilizar la serotonina y apaciguar la reactividad premenstrual.`;
     }
 
-    return `Sintonía seleccionada de ${art} a ${tempo} BPM para armonizar tu ritmo cardíaco y tu bienestar de hoy.`;
+    return `Sintonía seleccionada de ${art} a ${tempo} BPM para armonizar tu bienestar y ritmo biológico de hoy.`;
   }
 
   /**
-   * Obtiene la recomendación de canción usando el repertorio de la usuaria o el catálogo psicoacústico calibrado
+   * Algoritmo de Recomendación Dinámico:
+   * Examina estrictamente los artistas favoritos, álbumes guardados y canciones favoritas
+   * de la usuaria, clasificándolos y puntuándolos según las métricas psicoacústicas de su ciclo.
    */
   static async getRecommendationForUser(phase = 'Ovulatoria', symptoms = [], forceRotate = false) {
     let token = await this.getValidToken() || this.getStoredToken();
     const acousticTargets = this.computeAcousticTargets(phase, symptoms);
     const isCalmPhase = acousticTargets.isCalmPhase;
-    const excludedKeywords = ['metal', 'deathcore', 'screamo', 'hard rock', 'heavy metal', 'grindcore', 'punk', 'drill', 'hardcore', 'industrial', 'techno'];
 
     if (!token || !this.isConnected()) {
       return {
@@ -2788,193 +2703,233 @@ class SpotifyPsychoacousticEngine {
       };
     }
 
-    // Helper fetch con auto-refresco en caso de 401
-    let hadAuthError = false;
+    let lastStatus = 200;
     const spotifyFetch = async (url) => {
       let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      lastStatus = res.status;
       if (res.status === 401) {
         const refreshedToken = await this.refreshAccessToken();
         if (refreshedToken) {
           token = refreshedToken;
           res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        } else {
-          hadAuthError = true;
+          lastStatus = res.status;
         }
       }
       return res;
     };
 
     try {
-      // 1. Asegurar que los artistas favoritos de la usuaria estén sincronizados
+      // 1. Asegurar sincronización de la biblioteca de la usuaria
       let storedArtists = [];
       let storedTracks = [];
+      let likedTracks = [];
+      let savedAlbums = [];
+      let recentTracks = [];
+
       try {
         storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
         storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
+        likedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
+        savedAlbums = JSON.parse(localStorage.getItem('pochirocho_spotify_saved_albums') || '[]');
+        recentTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_recent_tracks') || '[]');
       } catch (e) {}
 
-      if (storedArtists.length === 0 && storedTracks.length === 0) {
+      if (storedArtists.length === 0 && storedTracks.length === 0 && likedTracks.length === 0) {
         await this.fetchAndStoreUserProfile();
         try {
           storedArtists = JSON.parse(localStorage.getItem('pochirocho_spotify_top_artists') || '[]');
           storedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
+          likedTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
+          savedAlbums = JSON.parse(localStorage.getItem('pochirocho_spotify_saved_albums') || '[]');
+          recentTracks = JSON.parse(localStorage.getItem('pochirocho_spotify_recent_tracks') || '[]');
         } catch (e) {}
       }
 
-      let seedArtists = [];
-      let seedTracks = [];
-
-      if (storedArtists.length) {
-        if (isCalmPhase) {
-          const calmArtists = storedArtists.filter(a => {
-            const genres = (a.genres || []).map(g => g.toLowerCase());
-            return !genres.some(g => excludedKeywords.some(ex => g.includes(ex)));
-          });
-          seedArtists = (calmArtists.length > 0 ? calmArtists : storedArtists).slice(0, 3).map(a => a.id);
-        } else {
-          seedArtists = storedArtists.slice(0, 3).map(a => a.id);
-        }
-      }
-
-      if (storedTracks.length) {
-        seedTracks = storedTracks.slice(0, 2).map(t => t.id);
-      }
-
-      let tracks = [];
-
-      // Intento 1: Spotify Recommendations API (si está disponible)
-      let queryParams = new URLSearchParams({
-        limit: '20',
-        target_energy: acousticTargets.target_energy.toFixed(2),
-        target_valence: acousticTargets.target_valence.toFixed(2),
-        target_tempo: Math.round(acousticTargets.target_tempo).toString(),
-        target_acousticness: acousticTargets.target_acousticness.toFixed(2),
-        target_danceability: acousticTargets.target_danceability.toFixed(2)
-      });
-
-      if (acousticTargets.max_energy !== undefined) {
-        queryParams.append('max_energy', acousticTargets.max_energy.toFixed(2));
-      }
-      if (acousticTargets.max_tempo !== undefined) {
-        queryParams.append('max_tempo', Math.round(acousticTargets.max_tempo).toString());
-      }
-      if (acousticTargets.min_acousticness !== undefined) {
-        queryParams.append('min_acousticness', acousticTargets.min_acousticness.toFixed(2));
-      }
-      if (acousticTargets.min_energy !== undefined) {
-        queryParams.append('min_energy', acousticTargets.min_energy.toFixed(2));
-      }
-
-      if (seedArtists.length > 0) {
-        queryParams.append('seed_artists', seedArtists.slice(0, 2).join(','));
-      }
-      if (seedTracks.length > 0) {
-        queryParams.append('seed_tracks', seedTracks.slice(0, 2).join(','));
-      }
-      if (!seedArtists.length && !seedTracks.length) {
-        queryParams.append('seed_genres', isCalmPhase ? 'acoustic,indie,ambient' : 'pop,latin,indie');
-      }
-
-      try {
-        const recResponse = await spotifyFetch(`https://api.spotify.com/v1/recommendations?${queryParams.toString()}`);
-        if (recResponse.ok) {
-          const recData = await recResponse.json();
-          tracks = recData.tracks || [];
-        }
-      } catch (e) {}
-
-      // Intento 2: Si no hubo respuesta de recommendations, buscar directamente pistas de los artistas favoritos de la usuaria en Spotify
-      if (tracks.length === 0 && storedArtists.length > 0) {
-        const candidateArtists = storedArtists.slice(0, 5);
-        const randomArtist = candidateArtists[Math.floor(Math.random() * candidateArtists.length)];
-        if (randomArtist && randomArtist.name) {
-          try {
-            const searchRes = await spotifyFetch(`https://api.spotify.com/v1/search?q=artist:${encodeURIComponent(randomArtist.name)}&type=track&limit=20`);
-            if (searchRes.ok) {
-              const searchData = await searchRes.json();
-              tracks = searchData.tracks?.items || [];
-            }
-          } catch (e) {}
-        }
-      }
-
-      // Intento 3: Usar canciones guardadas de la biblioteca de la usuaria (Top Tracks o Liked Songs)
-      if (tracks.length === 0) {
-        try {
-          const liked = JSON.parse(localStorage.getItem('pochirocho_spotify_liked_tracks') || '[]');
-          const topTr = JSON.parse(localStorage.getItem('pochirocho_spotify_top_tracks') || '[]');
-          let combined = [...liked, ...topTr];
-          if (isCalmPhase && combined.length > 0) {
-            combined = combined.filter(t => {
-              const text = `${t.name} ${t.artists?.map(a => a.name).join(' ') || ''}`.toLowerCase();
-              return !excludedKeywords.some(ex => text.includes(ex));
-            });
-          }
-          tracks = combined;
-        } catch (e) {}
-      }
-
-      // Intento 4: Búsqueda dinámica en Spotify según el tempo y estado de la fase
-      if (tracks.length === 0) {
-        const searchKeyword = isCalmPhase
-          ? 'calm acoustic piano soft'
-          : (phase.toLowerCase().includes('folicular') ? 'pop upbeat positive' : 'dance pop vital energy');
-        try {
-          const searchRes = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchKeyword)}&type=track&limit=15`);
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            tracks = searchData.tracks?.items || [];
-          }
-        } catch (e) {}
-      }
-
-      // Fallback Infalible al Catálogo Psicoacústico Calibrado por Fase Hormonal:
-      // Si la API de Spotify devuelve 0 pistas (por estar en Development Mode 403, endpoints deprecados 404
-      // o cuenta sin biblioteca previa), NUNCA dejamos a la usuaria en un estado vacío o bloqueado.
-      if (tracks.length === 0) {
-        let normPhase = 'Menstrual';
-        const pLow = (phase || '').toLowerCase();
-        if (pLow.includes('folicular')) normPhase = 'Folicular';
-        else if (pLow.includes('ovulatoria')) normPhase = 'Ovulatoria';
-        else if (pLow.includes('lutea') || pLow.includes('lútea') || pLow.includes('premenstrual')) normPhase = 'Lutea';
-
-        const catalog = this.PSYCHOACOUSTIC_CATALOG[normPhase] || this.PSYCHOACOUSTIC_CATALOG.Menstrual;
-        const idxKey = `pochirocho_sp_idx_${normPhase}`;
-        let idx = parseInt(localStorage.getItem(idxKey) || '0', 10);
-        if (forceRotate) {
-          idx = (idx + 1) % catalog.length;
-          try { localStorage.setItem(idxKey, idx.toString()); } catch(e) {}
-        } else {
-          idx = idx % catalog.length;
-        }
-        const selected = catalog[idx];
-
+      // Si Spotify devolvió 403 Forbidden (cuenta no admitida en Spotify for Developers)
+      const storedApiError = localStorage.getItem('pochirocho_spotify_api_error');
+      if (storedApiError === '403_FORBIDDEN' || lastStatus === 403) {
         return {
           isConnected: true,
+          hasApiError: true,
+          errorCode: 403,
+          errorType: 'ACCOUNT_DEV_MODE',
           phase,
-          isCalibratedFallback: true,
-          acousticTargets: {
-            ...acousticTargets,
-            target_tempo: selected.tempo,
-            reasonText: selected.reasonText
-          },
-          track: {
-            id: selected.id,
-            name: selected.name,
-            artist: selected.artist,
-            albumName: selected.albumName,
-            albumCover: selected.albumCover,
-            spotifyUrl: selected.spotifyUrl,
-            uri: `spotify:track:${selected.id}`
-          }
+          acousticTargets,
+          profile: this.getUserProfile()
         };
       }
 
-      // Elegir entre los mejores candidatos reales de Spotify
-      const selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
-      const artistName = selectedTrack.artists?.map(a => a.name).join(', ') || 'Artista de Spotify';
+      // 2. Compilar el conjunto de canciones candidatas 100% de la biblioteca real de la usuaria
+      const candidateMap = new Map();
+
+      // a) Canciones favoritas explícitas (Top Tracks)
+      storedTracks.forEach((t, idx) => {
+        if (t && t.id) {
+          const bonus = Math.max(10, 25 - idx);
+          candidateMap.set(t.id, { ...t, _source: 'top_tracks', _affinityBonus: bonus });
+        }
+      });
+
+      // b) Canciones con "Me Gusta" (Liked Songs)
+      likedTracks.forEach(t => {
+        if (t && t.id) {
+          if (candidateMap.has(t.id)) {
+            candidateMap.get(t.id)._affinityBonus += 20;
+          } else {
+            candidateMap.set(t.id, { ...t, _source: 'liked', _affinityBonus: 22 });
+          }
+        }
+      });
+
+      // c) Canciones de álbumes guardados en la biblioteca
+      savedAlbums.forEach(alb => {
+        if (alb && alb.tracks && Array.isArray(alb.tracks.items)) {
+          alb.tracks.items.forEach(t => {
+            if (t && t.id) {
+              if (candidateMap.has(t.id)) {
+                candidateMap.get(t.id)._affinityBonus += 12;
+              } else {
+                candidateMap.set(t.id, {
+                  ...t,
+                  album: { name: alb.name, images: alb.images },
+                  _source: 'saved_album',
+                  _affinityBonus: 15
+                });
+              }
+            }
+          });
+        }
+      });
+
+      // d) Canciones escuchadas recientemente
+      recentTracks.forEach(t => {
+        if (t && t.id) {
+          if (candidateMap.has(t.id)) {
+            candidateMap.get(t.id)._affinityBonus += 8;
+          } else {
+            candidateMap.set(t.id, { ...t, _source: 'recent', _affinityBonus: 8 });
+          }
+        }
+      });
+
+      // e) Si hay artistas favoritos registrados, enriquecer con sus canciones principales en Spotify
+      if (candidateMap.size < 15 && storedArtists.length > 0) {
+        const topArtistsToFetch = storedArtists.slice(0, 3);
+        for (let art of topArtistsToFetch) {
+          try {
+            const artTracksRes = await spotifyFetch(`https://api.spotify.com/v1/artists/${art.id}/top-tracks?market=from_token`);
+            if (artTracksRes.ok) {
+              const artData = await artTracksRes.json();
+              (artData.tracks || []).forEach((t, idx) => {
+                if (t && t.id && !candidateMap.has(t.id)) {
+                  candidateMap.set(t.id, {
+                    ...t,
+                    _source: 'favorite_artist',
+                    _affinityBonus: Math.max(8, 20 - (idx * 2))
+                  });
+                }
+              });
+            }
+          } catch(e) {}
+        }
+      }
+
+      const allCandidates = Array.from(candidateMap.values());
+
+      // Si la biblioteca de la usuaria está completamente vacía (cuenta nueva sin reproducciones ni likes):
+      if (allCandidates.length === 0) {
+        return {
+          isConnected: true,
+          isEmptyLibrary: true,
+          phase,
+          acousticTargets,
+          profile: this.getUserProfile()
+        };
+      }
+
+      // 3. Puntuación y Ranking Psicoacústico según Fase Hormonal y Síntomas
+      const calmPositiveWords = ['acoustic', 'indie', 'folk', 'piano', 'chill', 'lofi', 'lo-fi', 'ambient', 'r&b', 'soul', 'ballad', 'slow', 'quiet', 'dream', 'sleep', 'relax', 'soft', 'bossa'];
+      const calmNegativeWords = ['metal', 'deathcore', 'screamo', 'hard rock', 'heavy metal', 'grindcore', 'punk', 'drill', 'hardcore', 'industrial', 'trap pesado'];
+      const energeticPositiveWords = ['pop', 'dance', 'upbeat', 'electro', 'funk', 'disco', 'reggaeton', 'latin', 'vital', 'party', 'house', 'synth', 'hyperpop'];
+
+      const artistGenreMap = {};
+      storedArtists.forEach(a => {
+        if (a && a.id && Array.isArray(a.genres)) {
+          artistGenreMap[a.id] = a.genres.map(g => g.toLowerCase());
+        }
+      });
+
+      const scoredCandidates = allCandidates.map(track => {
+        let score = 50 + (track._affinityBonus || 0);
+
+        let trackGenres = [];
+        if (Array.isArray(track.artists)) {
+          track.artists.forEach(a => {
+            if (a && a.id && artistGenreMap[a.id]) {
+              trackGenres.push(...artistGenreMap[a.id]);
+            }
+          });
+        }
+        const textToMatch = `${track.name || ''} ${track.album?.name || ''} ${trackGenres.join(' ')}`.toLowerCase();
+
+        if (isCalmPhase) {
+          const hasCalmBonus = calmPositiveWords.some(w => textToMatch.includes(w));
+          const hasCalmPenalty = calmNegativeWords.some(w => textToMatch.includes(w));
+          if (hasCalmBonus) score += 28;
+          if (hasCalmPenalty) score -= 65;
+        } else {
+          const hasEnergeticBonus = energeticPositiveWords.some(w => textToMatch.includes(w));
+          if (hasEnergeticBonus) score += 28;
+          if (textToMatch.includes('sleep') || textToMatch.includes('meditation')) score -= 30;
+        }
+
+        if (typeof track.popularity === 'number') {
+          score += (track.popularity * 0.15);
+        }
+
+        return {
+          track,
+          score
+        };
+      });
+
+      scoredCandidates.sort((a, b) => b.score - a.score);
+
+      // Agrupar los mejores candidatos (top 8) para permitir rotación fluida entre sus canciones favoritas
+      const topPool = scoredCandidates.slice(0, Math.min(8, scoredCandidates.length)).map(item => item.track);
+
+      const idxKey = `pochirocho_sp_rec_idx_${phase.toLowerCase()}`;
+      let recIdx = parseInt(localStorage.getItem(idxKey) || '0', 10);
+      if (forceRotate) {
+        recIdx = (recIdx + 1) % topPool.length;
+        try { localStorage.setItem(idxKey, recIdx.toString()); } catch(e) {}
+      } else {
+        recIdx = recIdx % topPool.length;
+      }
+
+      const chosenTrack = topPool[recIdx] || topPool[0];
+      const artistNames = chosenTrack.artists?.map(a => a.name).join(', ') || 'Artista de tu biblioteca';
       const tempo = Math.round(acousticTargets.target_tempo);
-      const dynamicReason = this.buildDynamicReason(artistName, selectedTrack.name, phase, symptoms, tempo);
+      const dynamicReason = this.buildDynamicReason(artistNames, chosenTrack.name, phase, symptoms, tempo);
+
+      const trackPayload = {
+        id: chosenTrack.id,
+        name: chosenTrack.name,
+        artist: artistNames,
+        albumName: chosenTrack.album?.name || '',
+        albumCover: chosenTrack.album?.images?.[0]?.url || 'assets/ui/spotify_default_cover.png',
+        previewUrl: chosenTrack.preview_url,
+        spotifyUrl: chosenTrack.external_urls?.spotify || `https://open.spotify.com/track/${chosenTrack.id}`,
+        uri: chosenTrack.uri
+      };
+
+      try {
+        localStorage.setItem('pochirocho_spotify_last_rec', JSON.stringify({
+          phase,
+          track: trackPayload,
+          timestamp: Date.now()
+        }));
+      } catch(e) {}
 
       return {
         isConnected: true,
@@ -2983,46 +2938,18 @@ class SpotifyPsychoacousticEngine {
           ...acousticTargets,
           reasonText: dynamicReason
         },
-        track: {
-          id: selectedTrack.id,
-          name: selectedTrack.name,
-          artist: artistName,
-          albumName: selectedTrack.album?.name || '',
-          albumCover: selectedTrack.album?.images?.[0]?.url || 'assets/ui/spotify_default_cover.png',
-          previewUrl: selectedTrack.preview_url,
-          spotifyUrl: selectedTrack.external_urls?.spotify || `https://open.spotify.com/track/${selectedTrack.id}`,
-          uri: selectedTrack.uri
-        }
+        track: trackPayload
       };
     } catch (err) {
-      console.warn('Error al obtener recomendaciones de Spotify Web API:', err);
-      // Fallback resiliente al catálogo psicoacústico
-      let normPhase = 'Menstrual';
-      const pLow = (phase || '').toLowerCase();
-      if (pLow.includes('folicular')) normPhase = 'Folicular';
-      else if (pLow.includes('ovulatoria')) normPhase = 'Ovulatoria';
-      else if (pLow.includes('lutea') || pLow.includes('lútea') || pLow.includes('premenstrual')) normPhase = 'Lutea';
-
-      const catalog = this.PSYCHOACOUSTIC_CATALOG[normPhase] || this.PSYCHOACOUSTIC_CATALOG.Menstrual;
-      const selected = catalog[0];
+      console.warn('Error en recomendación dinámica de Spotify:', err);
       return {
         isConnected: true,
+        hasApiError: true,
+        errorCode: lastStatus || 500,
+        errorMessage: err.message,
         phase,
-        isCalibratedFallback: true,
-        acousticTargets: {
-          ...acousticTargets,
-          target_tempo: selected.tempo,
-          reasonText: selected.reasonText
-        },
-        track: {
-          id: selected.id,
-          name: selected.name,
-          artist: selected.artist,
-          albumName: selected.albumName,
-          albumCover: selected.albumCover,
-          spotifyUrl: selected.spotifyUrl,
-          uri: `spotify:track:${selected.id}`
-        }
+        acousticTargets,
+        profile: this.getUserProfile()
       };
     }
   }
@@ -7563,7 +7490,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="spotify-vibe-pill">Personalizada 🎧</span>
           </div>
           <p class="spotify-card-desc">
-            Conecta tu cuenta de Spotify para que <strong>${petName}</strong> elija la mejor canción según tu <strong>Fase ${displayPhase}</strong> y síntomas de hoy.
+            Conecta tu cuenta de Spotify para que <strong>${petName}</strong> elija la mejor canción según tu <strong>Fase ${displayPhase}</strong> y síntomas de hoy revisando tus artistas favoritos, álbumes y canciones guardadas.
           </p>
           <div style="display:flex; justify-content:center; margin-top:0.35rem;">
             <button class="btn-spotify-connect" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
@@ -7578,6 +7505,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const recResult = await SpotifyPsychoacousticEngine.getRecommendationForUser(displayPhase, recentSymptoms, forceRotate);
+      const userProf = SpotifyPsychoacousticEngine.getUserProfile();
+      const userLabel = userProf?.display_name || userProf?.email || 'Usuario';
+
+      // CASO 1: Pista recomendada de su biblioteca real
       if (recResult && recResult.track) {
         const tr = recResult.track;
         const trackName = tr.name || 'Sintonía de Spotify';
@@ -7609,21 +7540,87 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="#02040a"><path d="M8 5v14l11-7z"/></svg>
                 <span>Escuchar en Spotify ↗</span>
               </button>
-              <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard(true, true)" title="Obtener otra recomendación para esta fase">
+              <button class="btn-spotify-refresh" onclick="renderSpotifyDashboardCard(true, true)" title="Obtener otra recomendación de tu biblioteca para esta fase">
                 <span class="material-symbols-outlined" style="font-size:1rem;">refresh</span>
               </button>
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.45rem; padding-top:0.35rem; border-top:1px solid rgba(255,255,255,0.07); font-size:0.7rem;">
-              <button onclick="openModal('spotify-diagnostic')" style="background:none; border:none; color:#34d399; font-size:0.7rem; cursor:pointer; padding:0.1rem 0.2rem; display:inline-flex; align-items:center; gap:0.25rem; -webkit-appearance:none;">
-                <span>🔍 Diagnóstico (iPhone vs Cuenta)</span>
+              <span style="color:#94a3b8; font-size:0.68rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:55%;">
+                🎧 Conectada: <strong style="color:#e2e8f0;">${userLabel}</strong>
+              </span>
+              <div style="display:flex; gap:0.4rem;">
+                <button onclick="SpotifyPsychoacousticEngine.switchAccount()" style="background:none; border:none; color:#38bdf8; font-size:0.7rem; cursor:pointer; padding:0.1rem 0.2rem; text-decoration:underline; -webkit-appearance:none;">
+                  Cambiar Cuenta
+                </button>
+                <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#fca5a5; font-size:0.7rem; cursor:pointer; padding:0.1rem 0.2rem; text-decoration:underline; -webkit-appearance:none;">
+                  Desconectar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // CASO 2: Error 403 de Spotify Developer Mode (Cuenta no autorizada en Dashboard)
+      if (recResult && (recResult.hasApiError || recResult.errorCode === 403)) {
+        cardContainer.innerHTML = `
+          <div class="spotify-recommendation-card ${animClass}" style="border-color:rgba(239,68,68,0.4); background:linear-gradient(135deg, rgba(239,68,68,0.12), rgba(15,23,42,0.85));">
+            <div class="spotify-card-header">
+              <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1;">
+                <span style="font-size:1.1rem;">⚠️</span>
+                <span class="spotify-card-title" style="color:#fca5a5;">Permisos de Cuenta en Spotify (403)</span>
+              </div>
+            </div>
+            <p class="spotify-card-desc" style="color:#cbd5e1; font-size:0.76rem; margin:0.3rem 0;">
+              Cuenta conectada: <strong style="color:#ffffff;">${userLabel}</strong>.<br/>
+              Spotify bloqueó la solicitud (403 Forbidden). Esto sucede porque en <em>Spotify for Developers</em> la app está en <em>Development Mode</em> y el correo exacto de esta cuenta debe agregarse en <strong>Users and Access</strong> y hacer clic en <strong>Save changes</strong>.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:0.35rem; margin-top:0.4rem;">
+              <button class="btn-spotify-connect" style="background:#38bdf8; color:#02040a;" onclick="SpotifyPsychoacousticEngine.switchAccount()">
+                <span>🔄 Cambiar de Cuenta de Spotify</span>
               </button>
-              <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#94a3b8; font-size:0.7rem; cursor:pointer; padding:0.1rem 0.2rem; text-decoration:underline; -webkit-appearance:none;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem;">
+                <button onclick="openModal('spotify-diagnostic')" style="background:none; border:none; color:#34d399; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
+                  🔍 Diagnóstico Completo
+                </button>
+                <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#fca5a5; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
+                  Desconectar y Borrar Datos
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // CASO 3: Biblioteca vacía (Cuenta sin canciones guardadas / historial)
+      if (recResult && recResult.isEmptyLibrary) {
+        cardContainer.innerHTML = `
+          <div class="spotify-recommendation-card ${animClass}">
+            <div class="spotify-card-header">
+              <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                <span class="spotify-card-title">Sintonía de ${petName}</span>
+              </div>
+              <span class="spotify-vibe-pill">Conectada 🎧</span>
+            </div>
+            <p class="spotify-card-desc">
+              ¡Hola <strong>${userLabel}</strong>! Tu cuenta de Spotify está conectada, pero aún no tiene canciones guardadas o historial de artistas favoritos.
+              Escucha tu música favorita en Spotify o dale "Me Gusta" a canciones para que <strong>${petName}</strong> pueda calibrar tu sintonía según tu <strong>Fase ${displayPhase}</strong>.
+            </p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem;">
+              <button onclick="SpotifyPsychoacousticEngine.switchAccount()" style="background:none; border:none; color:#38bdf8; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
+                Cambiar de Cuenta
+              </button>
+              <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#94a3b8; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
                 Desconectar
               </button>
             </div>
           </div>
         `;
+        return;
       }
     } catch (err) {
       console.warn('Error al renderizar tarjeta de Spotify:', err);
@@ -11129,12 +11126,17 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
               </div>
 
               <!-- Botones de Acción -->
-              <div style="display:flex; gap:0.5rem; margin-top:0.2rem;">
-                <button class="btn-action" style="flex:1; padding:0.75rem; font-size:0.8rem;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
-                  🔄 Reconectar con Spotify
-                </button>
-                <button class="btn-action" style="flex:1; padding:0.75rem; font-size:0.8rem; background:rgba(255,255,255,0.1); color:#e2e8f0; border:1px solid rgba(255,255,255,0.2);" onclick="closeModal()">
-                  Cerrar
+              <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.2rem;">
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn-action" style="flex:1; padding:0.75rem; font-size:0.8rem; background:#38bdf8; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.switchAccount()">
+                    🔄 Cambiar Cuenta
+                  </button>
+                  <button class="btn-action" style="flex:1; padding:0.75rem; font-size:0.8rem;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
+                    Reconectar
+                  </button>
+                </div>
+                <button class="btn-action" style="width:100%; padding:0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.08); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);" onclick="closeModal()">
+                  Cerrar Diagnóstico
                 </button>
               </div>
 
@@ -11782,16 +11784,19 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
             <span>Sintonía Musical Spotify</span>
           </div>
           <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.4rem;">
-            Estado de conexión: <strong id="settings-spotify-status">${isSpotifyConn ? '<span style="color:#1ed760;">🟢 Cuenta Conectada</span>' : '<span style="color:#cbd5e1;">⚪ No conectada</span>'}</strong>
+            Estado de conexión: <strong id="settings-spotify-status">${isSpotifyConn ? `<span style="color:#1ed760;">🟢 Conectada (${SpotifyPsychoacousticEngine.getUserProfile()?.display_name || SpotifyPsychoacousticEngine.getUserProfile()?.email || 'Cuenta'})</span>` : '<span style="color:#cbd5e1;">⚪ No conectada</span>'}</strong>
           </div>
           <div id="settings-spotify-btn-slot">
             ${isSpotifyConn ? `
               <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                <button class="settings-action-btn" style="background:#38bdf8; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.switchAccount();">
+                  <span>🔄 Cambiar de Cuenta de Spotify</span>
+                </button>
                 <button class="settings-action-btn" style="background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.35); color:#6ee7b7;" onclick="closeModal(); setTimeout(() => openModal('spotify-diagnostic'), 150);">
                   <span>🔍 Diagnosticar Conexión (iPhone vs Cuenta)</span>
                 </button>
                 <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
-                  <span>Desconectar Cuenta de Spotify</span>
+                  <span>Desconectar y Borrar Datos Locales</span>
                 </button>
               </div>
             ` : `
@@ -12004,19 +12009,25 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
     const isConn = SpotifyPsychoacousticEngine.isConnected();
     const statusEl = document.getElementById('settings-spotify-status');
     const slotEl = document.getElementById('settings-spotify-btn-slot');
+    const userProf = SpotifyPsychoacousticEngine.getUserProfile();
+    const userLabel = userProf?.display_name || userProf?.email || 'Cuenta';
+
     if (statusEl) {
       statusEl.innerHTML = isConn 
-        ? '<span style="color:#1ed760;">🟢 Cuenta Conectada</span>' 
+        ? `<span style="color:#1ed760;">🟢 Conectada (${userLabel})</span>` 
         : '<span style="color:#cbd5e1;">⚪ No conectada</span>';
     }
     if (slotEl) {
       slotEl.innerHTML = isConn ? `
         <div style="display:flex; flex-direction:column; gap:0.4rem;">
+          <button class="settings-action-btn" style="background:#38bdf8; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.switchAccount();">
+            <span>🔄 Cambiar de Cuenta de Spotify</span>
+          </button>
           <button class="settings-action-btn" style="background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.35); color:#6ee7b7;" onclick="closeModal(); setTimeout(() => openModal('spotify-diagnostic'), 150);">
             <span>🔍 Diagnosticar Conexión (iPhone vs Cuenta)</span>
           </button>
           <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
-            <span>Desconectar Cuenta de Spotify</span>
+            <span>Desconectar y Borrar Datos Locales</span>
           </button>
         </div>
       ` : `

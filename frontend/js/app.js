@@ -7573,57 +7573,12 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.45rem; padding-top:0.35rem; border-top:1px solid rgba(255,255,255,0.07); font-size:0.7rem;">
-              <span style="color:#94a3b8; font-size:0.68rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:55%;">
-                🎧 Conectada: <strong style="color:#e2e8f0;">${userLabel}</strong>
-              </span>
-              <div style="display:flex; gap:0.4rem;">
-                <button onclick="SpotifyPsychoacousticEngine.switchAccount()" style="background:none; border:none; color:#38bdf8; font-size:0.7rem; cursor:pointer; padding:0.1rem 0.2rem; text-decoration:underline; -webkit-appearance:none;">
-                  Cambiar Cuenta
-                </button>
-                <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#fca5a5; font-size:0.7rem; cursor:pointer; padding:0.1rem 0.2rem; text-decoration:underline; -webkit-appearance:none;">
-                  Desconectar
-                </button>
-              </div>
-            </div>
           </div>
         `;
         return;
       }
 
-      // CASO 2: Error 403 de Spotify Developer Mode (Cuenta no autorizada en Dashboard)
-      if (recResult && (recResult.hasApiError || recResult.errorCode === 403)) {
-        cardContainer.innerHTML = `
-          <div class="spotify-recommendation-card ${animClass}" style="border-color:rgba(239,68,68,0.4); background:linear-gradient(135deg, rgba(239,68,68,0.12), rgba(15,23,42,0.85));">
-            <div class="spotify-card-header">
-              <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1;">
-                <span style="font-size:1.1rem;">⚠️</span>
-                <span class="spotify-card-title" style="color:#fca5a5;">Permisos de Cuenta en Spotify (403)</span>
-              </div>
-            </div>
-            <p class="spotify-card-desc" style="color:#cbd5e1; font-size:0.76rem; margin:0.3rem 0;">
-              Cuenta conectada: <strong style="color:#ffffff;">${userLabel}</strong>.<br/>
-              Spotify bloqueó la solicitud (403 Forbidden). Esto sucede porque en <em>Spotify for Developers</em> la app está en <em>Development Mode</em> y el correo exacto de esta cuenta debe agregarse en <strong>Users and Access</strong> y hacer clic en <strong>Save changes</strong>.
-            </p>
-            <div style="display:flex; flex-direction:column; gap:0.35rem; margin-top:0.4rem;">
-              <button class="btn-spotify-connect" style="background:#38bdf8; color:#02040a;" onclick="SpotifyPsychoacousticEngine.switchAccount()">
-                <span>🔄 Cambiar de Cuenta de Spotify</span>
-              </button>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem;">
-                <button onclick="openModal('spotify-diagnostic')" style="background:none; border:none; color:#34d399; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
-                  🔍 Diagnóstico Completo
-                </button>
-                <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#fca5a5; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
-                  Desconectar y Borrar Datos
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      // CASO 3: Biblioteca vacía (Cuenta sin canciones guardadas / historial)
+      // CASO 2: Biblioteca vacía (Cuenta sin canciones guardadas / historial)
       if (recResult && recResult.isEmptyLibrary) {
         cardContainer.innerHTML = `
           <div class="spotify-recommendation-card ${animClass}">
@@ -7635,15 +7590,32 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="spotify-vibe-pill">Conectada 🎧</span>
             </div>
             <p class="spotify-card-desc">
-              ¡Hola <strong>${userLabel}</strong>! Tu cuenta de Spotify está conectada, pero aún no tiene canciones guardadas o historial de artistas favoritos.
-              Escucha tu música favorita en Spotify o dale "Me Gusta" a canciones para que <strong>${petName}</strong> pueda calibrar tu sintonía según tu <strong>Fase ${displayPhase}</strong>.
+              Tu cuenta de Spotify está conectada. Escucha tu música favorita en Spotify o dale "Me Gusta" a canciones para que <strong>${petName}</strong> pueda calibrar tu sintonía según tu <strong>Fase ${displayPhase}</strong>.
             </p>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem;">
-              <button onclick="SpotifyPsychoacousticEngine.switchAccount()" style="background:none; border:none; color:#38bdf8; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
-                Cambiar de Cuenta
-              </button>
-              <button onclick="SpotifyPsychoacousticEngine.disconnect(); renderSpotifyDashboardCard();" style="background:none; border:none; color:#94a3b8; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
-                Desconectar
+          </div>
+        `;
+        return;
+      }
+
+      // CASO 3: Sesión expirada
+      if (recResult && recResult.error === 'auth_expired') {
+        SpotifyPsychoacousticEngine.disconnect();
+        cardContainer.innerHTML = `
+          <div class="spotify-recommendation-card ${animClass}">
+            <div class="spotify-card-header">
+              <div style="display:flex; align-items:center; gap:0.35rem; min-width:0; flex:1; overflow:hidden;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                <span class="spotify-card-title">Sintonía de ${petName}</span>
+              </div>
+              <span class="spotify-vibe-pill">Sesión expirada ⚠️</span>
+            </div>
+            <p class="spotify-card-desc">
+              Tu sesión de Spotify expiró. Vuelve a conectar tu cuenta para recibir tu sintonía de la <strong>Fase ${displayPhase}</strong>.
+            </p>
+            <div style="display:flex; justify-content:center; margin-top:0.35rem;">
+              <button class="btn-spotify-connect" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#02040a"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.49 17.306c-.215.352-.676.465-1.028.25-2.82-1.722-6.37-2.112-10.55-1.157-.403.092-.806-.157-.898-.56-.092-.403.157-.806.56-.898 4.577-1.045 8.508-.598 11.666 1.337.352.215.465.676.25 1.028zm1.464-3.256c-.27.44-.847.58-1.287.31-3.228-1.984-8.15-2.558-11.97-1.398-.497.15-1.028-.135-1.178-.632-.15-.497.135-1.028.632-1.178 4.37-1.325 9.79-.684 13.493 1.59.44.27.58.847.31 1.288zm.126-3.39c-3.87-2.298-10.254-2.51-13.97-1.38-.595.18-1.226-.155-1.406-.75-.18-.595.155-1.226.75-1.406 4.27-1.296 11.31-1.048 15.772 1.6c.535.318.71 1.01.392 1.545-.318.535-1.01.71-1.545.392z"/></svg>
+                <span>Conectar mi Cuenta de Spotify</span>
               </button>
             </div>
           </div>
@@ -11036,154 +11008,6 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           <button class="btn-action" style="padding: 0.85rem; font-size: 0.9rem; margin-top: 0.3rem;" onclick="closeModal(); completeRoutineVictory();">✓ Completar Rutina</button>
         </div>
       `;
-    } else if (type === 'spotify-diagnostic') {
-      modalTitleIcon.textContent = 'troubleshoot';
-      modalTitle.textContent = 'Diagnóstico: Spotify (iPhone vs Cuenta)';
-      modalBody.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:0.75rem; color:#e2e8f0; padding:0.5rem 0;">
-          <div style="display:flex; align-items:center; gap:0.6rem; padding:0.85rem; background:rgba(29,185,84,0.1); border:1px solid rgba(29,185,84,0.3); border-radius:16px;">
-            <span class="material-symbols-outlined" style="color:#1ed760; font-size:1.6rem; animation:spin-slow 1.5s linear infinite;">sync</span>
-            <div style="font-size:0.82rem;">
-              <strong style="color:#ffffff;">Ejecutando diagnóstico en tiempo real...</strong><br/>
-              <span style="color:#94a3b8; font-size:0.74rem;">Comprobando iPhone, tokens OAuth, endpoints de perfil y catálogo de Spotify.</span>
-            </div>
-          </div>
-        </div>
-      `;
-
-      setTimeout(async () => {
-        try {
-          const report = await SpotifyPsychoacousticEngine.diagnoseConnection();
-          let bannerBg = 'rgba(16, 185, 129, 0.12)';
-          let bannerBorder = 'rgba(16, 185, 129, 0.35)';
-          let bannerTitle = '✅ Conexión con Spotify Operativa';
-          let bannerColor = '#34d399';
-
-          if (report.rootCause === 'ACCOUNT_DEV_MODE') {
-            bannerBg = 'rgba(239, 68, 68, 0.15)';
-            bannerBorder = 'rgba(239, 68, 68, 0.4)';
-            bannerTitle = '🚨 Diagnóstico: Problema en tu CUENTA de Spotify';
-            bannerColor = '#fca5a5';
-          } else if (report.rootCause === 'IPHONE_NETWORK') {
-            bannerBg = 'rgba(245, 158, 11, 0.15)';
-            bannerBorder = 'rgba(245, 158, 11, 0.4)';
-            bannerTitle = '🚨 Diagnóstico: Problema en tu IPHONE / Red';
-            bannerColor = '#fcd34d';
-          } else if (report.rootCause === 'TOKEN_EXPIRED') {
-            bannerBg = 'rgba(245, 158, 11, 0.15)';
-            bannerBorder = 'rgba(245, 158, 11, 0.4)';
-            bannerTitle = '⚠️ Diagnóstico: Token de Acceso Expirado';
-            bannerColor = '#fcd34d';
-          } else if (report.rootCause === 'NOT_LOGGED_IN') {
-            bannerBg = 'rgba(148, 163, 184, 0.15)';
-            bannerBorder = 'rgba(148, 163, 184, 0.3)';
-            bannerTitle = '⚪ Sin Cuenta Conectada';
-            bannerColor = '#cbd5e1';
-          }
-
-          modalBody.innerHTML = `
-            <div class="custom-modal-scroll" style="display:flex; flex-direction:column; gap:0.85rem; max-height:72vh; overflow-y:auto; padding-right:0.3rem;">
-              
-              <!-- Tarjeta de Diagnóstico Principal -->
-              <div style="background:${bannerBg}; border:1px solid ${bannerBorder}; border-radius:16px; padding:0.85rem;">
-                <div style="display:flex; align-items:center; gap:0.4rem; font-weight:800; font-size:0.88rem; color:${bannerColor}; margin-bottom:0.4rem;">
-                  <span>${bannerTitle}</span>
-                </div>
-                <div style="font-size:0.78rem; color:#f1f5f9; line-height:1.45; white-space:pre-line;">
-                  ${report.diagnosis}
-                </div>
-                ${report.recommendedAction ? `
-                  <div style="margin-top:0.6rem; padding:0.5rem 0.65rem; background:rgba(0,0,0,0.3); border-radius:10px; font-size:0.75rem; color:#cbd5e1; line-height:1.4;">
-                    <strong style="color:#ffffff;">Pasos recomendados:</strong><br/>
-                    ${report.recommendedAction}
-                  </div>
-                ` : ''}
-              </div>
-
-              <!-- Resultados Técnicos Específicos -->
-              <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:0.85rem;">
-                <span style="font-size:0.8rem; font-weight:800; color:#38bdf8; display:block; margin-bottom:0.5rem;">
-                  🔬 Pruebas Técnicas Realizadas:
-                </span>
-                <div style="display:flex; flex-direction:column; gap:0.45rem; font-size:0.73rem; color:#cbd5e1;">
-                  <div style="display:flex; justify-content:space-between;">
-                    <span>Dispositivo / iPhone detectado:</span>
-                    <strong style="color:${report.isIPhone ? '#38bdf8' : '#e2e8f0'}">${report.isIPhone ? '📱 iPhone (iOS Safari)' : '💻 Navegador Web'}</strong>
-                  </div>
-                  ${(report.profile?.email || report.meApiData?.email) ? `
-                  <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(29,185,84,0.1); padding:0.35rem 0.5rem; border-radius:8px; border:1px solid rgba(29,185,84,0.25);">
-                    <span style="color:#6ee7b7; font-weight:700;">Correo de Spotify:</span>
-                    <strong style="color:#1ed760; font-family:monospace; font-size:0.75rem;">${report.profile?.email || report.meApiData?.email}</strong>
-                  </div>
-                  ` : ''}
-                  <div style="display:flex; justify-content:space-between;">
-                    <span>Token de acceso guardado:</span>
-                    <strong style="color:${report.hasAccessToken ? '#4ade80' : '#f87171'}">${report.hasAccessToken ? '✓ Presente en iPhone' : '✗ Ausente'}</strong>
-                  </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span>Estado del Token:</span>
-                    <strong style="color:${report.isTokenExpired ? '#fbbf24' : '#4ade80'}">${report.isTokenExpired ? 'Vencido (Auto-refresco activo)' : '✓ Activo'}</strong>
-                  </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span>API Spotify Perfil (/v1/me):</span>
-                    <strong style="color:${report.meApiStatus === 200 ? '#4ade80' : (report.meApiStatus === 403 ? '#f87171' : '#fbbf24')}">
-                      ${report.meApiStatus === 200 ? '200 OK (Autorizado)' : (report.meApiStatus === 403 ? '403 Forbidden (No en Developer Mode)' : (report.meApiStatus || 'No ejecutado'))}
-                    </strong>
-                  </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span>API Spotify Búsqueda (/v1/search):</span>
-                    <strong style="color:${report.searchApiStatus === 200 ? '#4ade80' : '#fbbf24'}">
-                      ${report.searchApiStatus === 200 ? '200 OK' : (report.searchApiStatus || 'N/A')}
-                    </strong>
-                  </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span>Client ID en uso:</span>
-                    <span style="font-family:monospace; font-size:0.68rem; color:#94a3b8;">${report.clientId.slice(0, 8)}...${report.clientId.slice(-4)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Configuración de Client ID Personalizado (opcional) -->
-              <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:0.85rem;">
-                <span style="font-size:0.78rem; font-weight:800; color:#e2e8f0; display:block; margin-bottom:0.3rem;">
-                  ⚙️ Usar tu propio Client ID de Spotify (Opcional)
-                </span>
-                <p style="font-size:0.7rem; color:#94a3b8; margin-bottom:0.5rem; line-height:1.35;">
-                  Si creaste tu propia app en <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:#1ed760; text-decoration:underline;">developer.spotify.com</a>, pega su Client ID aquí:
-                </p>
-                <div style="display:flex; gap:0.4rem;">
-                  <input type="text" id="spotify-custom-client-id-input" value="${localStorage.getItem('pochirocho_spotify_client_id') || ''}" placeholder="Ej: fa292c3f485d40a4ba4fa1d17e61dd96" style="flex:1; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#ffffff; font-size:0.75rem; padding:0.45rem 0.6rem; font-family:monospace;" />
-                  <button onclick="saveCustomSpotifyClientId()" style="background:#1ed760; color:#02040a; border:none; border-radius:10px; font-weight:800; font-size:0.75rem; padding:0.45rem 0.8rem; cursor:pointer;">
-                    Guardar
-                  </button>
-                </div>
-              </div>
-
-              <!-- Botones de Acción -->
-              <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.2rem;">
-                <div style="display:flex; gap:0.5rem;">
-                  <button class="btn-action" style="flex:1; padding:0.75rem; font-size:0.8rem; background:#38bdf8; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.switchAccount()">
-                    🔄 Cambiar Cuenta
-                  </button>
-                  <button class="btn-action" style="flex:1; padding:0.75rem; font-size:0.8rem;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify()">
-                    Reconectar
-                  </button>
-                </div>
-                <button class="btn-action" style="width:100%; padding:0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.08); color:#e2e8f0; border:1px solid rgba(255,255,255,0.15);" onclick="closeModal()">
-                  Cerrar Diagnóstico
-                </button>
-              </div>
-
-            </div>
-          `;
-        } catch(diagErr) {
-          modalBody.innerHTML = `
-            <div style="padding:1rem; color:#fca5a5; font-size:0.85rem;">
-              Error al ejecutar diagnóstico: ${diagErr.message}
-            </div>
-          `;
-        }
-      }, 300);
     } else if (type === 'symptom-sheet') {
       modalTitleIcon.textContent = 'edit_note';
       modalTitle.textContent = 'Registrar Detalles Diarios';
@@ -11724,47 +11548,6 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
   // =========================================================================
   // LOGICA DE LA PANTALLA DE CONFIGURACIÓN & AJUSTES
   // =========================================================================
-  function renderSpotifySettingsAccountBox(isConn, userProf) {
-    if (!isConn) {
-      return `
-        <div style="padding:0.6rem 0.75rem; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.15); border-radius:10px; font-size:0.75rem; color:#94a3b8;">
-          Ninguna cuenta vinculada actualmente.
-        </div>
-      `;
-    }
-    const email = userProf?.email || (isConn ? 'Consultando correo...' : 'No disponible');
-    const name = userProf?.display_name || userProf?.id || 'Usuario';
-    const id = userProf?.id || '';
-
-    return `
-      <div style="padding:0.75rem; background:rgba(2,6,23,0.7); border:1.5px solid rgba(29, 185, 84, 0.4); border-radius:12px; display:flex; flex-direction:column; gap:0.5rem; margin-top:0.4rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.4rem;">
-          <span style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; font-weight:700;">Cuenta de Spotify Vinculada</span>
-          <span style="font-size:0.7rem; color:#1ed760; font-weight:700; background:rgba(29,185,84,0.15); padding:0.15rem 0.5rem; border-radius:6px; border:1px solid rgba(29,185,84,0.3);">🟢 Sesión Activa</span>
-        </div>
-        
-        <div>
-          <div style="font-size:0.72rem; color:#cbd5e1; margin-bottom:0.25rem; font-weight:600; display:flex; align-items:center; gap:0.3rem;">
-            <span>✉️ Correo de la cuenta:</span>
-          </div>
-          <div id="settings-spotify-email" style="font-size:0.86rem; font-weight:800; color:#1ed760; font-family:monospace; word-break:break-all; background:rgba(29,185,84,0.12); padding:0.45rem 0.6rem; border-radius:8px; border:1px solid rgba(29,185,84,0.3);">
-            ${email}
-          </div>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#cbd5e1; padding-top:0.2rem;">
-          <span>Usuario: <strong id="settings-spotify-name" style="color:#f8fafc;">${name}</strong></span>
-          ${id ? `<span style="font-size:0.68rem; color:#64748b;">ID: <span id="settings-spotify-id" style="font-family:monospace;">${id}</span></span>` : ''}
-        </div>
-
-        <div style="font-size:0.68rem; color:#94a3b8; line-height:1.35; background:rgba(255,255,255,0.04); padding:0.45rem 0.55rem; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-          💡 <em>Verificación: Este es exactamente el correo que debe estar agregado en <strong>Spotify for Developers &gt; Users and Access</strong> para permitir la conexión en modo de desarrollo.</em>
-        </div>
-      </div>
-    `;
-  }
-  window.renderSpotifySettingsAccountBox = renderSpotifySettingsAccountBox;
-
   function openSettingsModal() {
     try {
       let modal = document.getElementById('settings-modal-overlay');
@@ -11859,33 +11642,17 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
             <span>Sintonía Musical Spotify</span>
           </div>
           <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:0.4rem;">
-            Estado de conexión: <strong id="settings-spotify-status">${isSpotifyConn ? '<span style="color:#1ed760;">🟢 Conectada</span>' : '<span style="color:#cbd5e1;">⚪ No conectada</span>'}</strong>
-          </div>
-          <div id="settings-spotify-account-box" style="margin-bottom:0.75rem;">
-            ${renderSpotifySettingsAccountBox(isSpotifyConn, SpotifyPsychoacousticEngine.getUserProfile())}
+            Estado de conexión: <strong id="settings-spotify-status">${isSpotifyConn ? '<span style="color:#1ed760;">🟢 Cuenta Conectada</span>' : '<span style="color:#cbd5e1;">⚪ No conectada</span>'}</strong>
           </div>
           <div id="settings-spotify-btn-slot">
             ${isSpotifyConn ? `
-              <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                <button class="settings-action-btn" style="background:#38bdf8; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.switchAccount();">
-                  <span>🔄 Cambiar de Cuenta de Spotify</span>
-                </button>
-                <button class="settings-action-btn" style="background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.35); color:#6ee7b7;" onclick="closeModal(); setTimeout(() => openModal('spotify-diagnostic'), 150);">
-                  <span>🔍 Diagnosticar Conexión (iPhone vs Cuenta)</span>
-                </button>
-                <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
-                  <span>Desconectar y Borrar Datos Locales</span>
-                </button>
-              </div>
+              <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
+                <span>Desconectar Cuenta de Spotify</span>
+              </button>
             ` : `
-              <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
-                  <span>🟢 Conectar con Spotify</span>
-                </button>
-                <button class="settings-action-btn" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#cbd5e1;" onclick="closeModal(); setTimeout(() => openModal('spotify-diagnostic'), 150);">
-                  <span>🔍 Diagnóstico de Conexión</span>
-                </button>
-              </div>
+              <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
+                <span>🟢 Conectar con Spotify</span>
+              </button>
             `}
           </div>
         </div>
@@ -12055,21 +11822,6 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
       modal.style.display = 'flex';
       modal.classList.add('active');
-
-      if (isSpotifyConn && (!SpotifyPsychoacousticEngine.getUserProfile() || !SpotifyPsychoacousticEngine.getUserProfile()?.email)) {
-        if (typeof SpotifyPsychoacousticEngine.fetchUserProfile === 'function') {
-          SpotifyPsychoacousticEngine.fetchUserProfile().then(p => {
-            if (p) {
-              const emailEl = document.getElementById('settings-spotify-email');
-              if (emailEl) emailEl.textContent = p.email || 'No disponible en el perfil';
-              const nameEl = document.getElementById('settings-spotify-name');
-              if (nameEl) nameEl.textContent = p.display_name || p.id || 'Usuario';
-              const idEl = document.getElementById('settings-spotify-id');
-              if (idEl) idEl.textContent = p.id || '—';
-            }
-          }).catch(e => console.warn('Error refrescando email en settings modal:', e));
-        }
-      }
     } catch (err) {
       console.warn('openSettingsModal error:', err);
     }
@@ -12102,55 +11854,22 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
     const isConn = SpotifyPsychoacousticEngine.isConnected();
     const statusEl = document.getElementById('settings-spotify-status');
     const slotEl = document.getElementById('settings-spotify-btn-slot');
-    const accountBoxEl = document.getElementById('settings-spotify-account-box');
-    const userProf = SpotifyPsychoacousticEngine.getUserProfile();
 
     if (statusEl) {
       statusEl.innerHTML = isConn 
-        ? '<span style="color:#1ed760;">🟢 Conectada</span>' 
+        ? '<span style="color:#1ed760;">🟢 Cuenta Conectada</span>' 
         : '<span style="color:#cbd5e1;">⚪ No conectada</span>';
-    }
-    if (accountBoxEl && typeof renderSpotifySettingsAccountBox === 'function') {
-      accountBoxEl.innerHTML = renderSpotifySettingsAccountBox(isConn, userProf);
     }
     if (slotEl) {
       slotEl.innerHTML = isConn ? `
-        <div style="display:flex; flex-direction:column; gap:0.4rem;">
-          <button class="settings-action-btn" style="background:#38bdf8; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.switchAccount();">
-            <span>🔄 Cambiar de Cuenta de Spotify</span>
-          </button>
-          <button class="settings-action-btn" style="background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.35); color:#6ee7b7;" onclick="closeModal(); setTimeout(() => openModal('spotify-diagnostic'), 150);">
-            <span>🔍 Diagnosticar Conexión (iPhone vs Cuenta)</span>
-          </button>
-          <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
-            <span>Desconectar y Borrar Datos Locales</span>
-          </button>
-        </div>
+        <button class="settings-action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#fca5a5;" onclick="SpotifyPsychoacousticEngine.disconnect(); updateSpotifySettingsStatus(); if (typeof renderSpotifyDashboardCard==='function') renderSpotifyDashboardCard();">
+          <span>Desconectar Cuenta de Spotify</span>
+        </button>
       ` : `
-        <div style="display:flex; flex-direction:column; gap:0.4rem;">
-          <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
-            <span>🟢 Conectar con Spotify</span>
-          </button>
-          <button class="settings-action-btn" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#cbd5e1;" onclick="closeModal(); setTimeout(() => openModal('spotify-diagnostic'), 150);">
-            <span>🔍 Diagnóstico de Conexión</span>
-          </button>
-        </div>
+        <button class="settings-action-btn" style="background:#1DB954; color:#02040a; font-weight:800;" onclick="SpotifyPsychoacousticEngine.loginWithSpotify();">
+          <span>🟢 Conectar con Spotify</span>
+        </button>
       `;
-    }
-
-    if (isConn && (!userProf || !userProf.email)) {
-      if (typeof SpotifyPsychoacousticEngine.fetchUserProfile === 'function') {
-        SpotifyPsychoacousticEngine.fetchUserProfile().then(p => {
-          if (p) {
-            const emailEl = document.getElementById('settings-spotify-email');
-            if (emailEl) emailEl.textContent = p.email || 'No disponible en el perfil';
-            const nameEl = document.getElementById('settings-spotify-name');
-            if (nameEl) nameEl.textContent = p.display_name || p.id || 'Usuario';
-            const idEl = document.getElementById('settings-spotify-id');
-            if (idEl) idEl.textContent = p.id || '—';
-          }
-        }).catch(e => console.warn('Error actualizando perfil en settings:', e));
-      }
     }
   };
 

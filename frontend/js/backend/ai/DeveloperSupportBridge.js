@@ -152,6 +152,47 @@ export class DeveloperSupportBridge {
     return ticket;
   }
 
+  /**
+   * Envía un ítem de la Lista de Deseos (con imagen y notas) a santisc1304@gmail.com
+   */
+  static async sendWishlistTicket({ title = '', category = 'General', priceEstimate = '', notes = '', imageDataUrl = null, timestamp = new Date().toISOString() }) {
+    const ticket = {
+      id: `wish_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      type: 'WISHLIST_ITEM',
+      title,
+      category,
+      priceEstimate,
+      notes,
+      hasImage: !!imageDataUrl,
+      timestamp,
+      status: 'REGISTRADO_WISHLIST',
+      developerEmail: this.developerEmail
+    };
+
+    this.ticketsEnviados.push(ticket);
+    console.log(`🛍️ [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Nuevo deseo recibido:`, ticket);
+
+    this.persistTicket(ticket);
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `🛍️ [Pochirocho] Nuevo Deseo de tu Chica: ${title} (${category})`,
+      message: `¡Tu chica ha agregado un nuevo deseo a su lista de recompensas!\n\nArtículo/Lugar: ${title}\nCategoría: ${category}\nPrecio/Presupuesto estimado: ${priceEstimate || 'No especificado'}\nNotas/Detalles: ${notes || 'Sin notas adicionales'}\nFecha: ${new Date(timestamp).toLocaleString('es-CO')}\n\nPuedes ver la imagen y detalles guardados en la app.`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'LISTA_DE_DESEOS',
+        articulo: title,
+        categoria: category,
+        precioEstimado: priceEstimate || 'N/A',
+        notas: notes || 'N/A',
+        adjuntoImagen: imageDataUrl ? 'Imagen adjunta registrada en dispositivo (DataURL)' : 'Sin imagen',
+        fecha: timestamp
+      }
+    });
+
+    return ticket;
+  }
+
   static persistTicket(ticket) {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -164,3 +205,4 @@ export class DeveloperSupportBridge {
     }
   }
 }
+

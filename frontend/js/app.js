@@ -189,6 +189,53 @@ class DeveloperSupportBridge {
 
     return ticket;
   }
+
+  /**
+   * Envía un ítem de la Lista de Deseos (con imagen y notas) a santisc1304@gmail.com
+   */
+  static async sendWishlistTicket({ title = '', category = 'General', priceEstimate = '', notes = '', imageDataUrl = null, timestamp = new Date().toISOString() }) {
+    const ticket = {
+      id: `wish_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      type: 'WISHLIST_ITEM',
+      title,
+      category,
+      priceEstimate,
+      notes,
+      hasImage: !!imageDataUrl,
+      timestamp,
+      status: 'REGISTRADO_WISHLIST',
+      developerEmail: this.developerEmail
+    };
+
+    this.ticketsEnviados.push(ticket);
+    console.log(`🛍️ [POLLO DESARROLLADOR 🐔💻 -> ${this.developerEmail}] Nuevo deseo recibido:`, ticket);
+
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const ticketsPrevios = JSON.parse(window.localStorage.getItem('pochirocho_dev_tickets') || '[]');
+        ticketsPrevios.push(ticket);
+        window.localStorage.setItem('pochirocho_dev_tickets', JSON.stringify(ticketsPrevios));
+      }
+    } catch (e) {}
+
+    // Despachar email real a santisc1304@gmail.com
+    await this.dispatchEmailToDeveloper({
+      subject: `🛍️ [Pochirocho] Nuevo Deseo de tu Chica: ${title} (${category})`,
+      message: `¡Tu chica ha agregado un nuevo deseo a su lista de recompensas!\n\nArtículo/Lugar: ${title}\nCategoría: ${category}\nPrecio/Presupuesto estimado: ${priceEstimate || 'No especificado'}\nNotas/Detalles: ${notes || 'Sin notas adicionales'}\nFecha: ${new Date(timestamp).toLocaleString('es-CO')}\n\nPuedes ver la imagen y detalles guardados en la app.`,
+      data: {
+        ticketId: ticket.id,
+        tipo: 'LISTA_DE_DESEOS',
+        articulo: title,
+        categoria: category,
+        precioEstimado: priceEstimate || 'N/A',
+        notas: notes || 'N/A',
+        adjuntoImagen: imageDataUrl ? 'Imagen adjunta registrada en dispositivo (DataURL)' : 'Sin imagen',
+        fecha: timestamp
+      }
+    });
+
+    return ticket;
+  }
 }
 
 /**
@@ -4031,7 +4078,7 @@ class AchievementsEngine {
 
     this.trackingData = {
       purchasedItemIds: [],
-      usedPetIds: ['erizo'],
+      usedPetIds: ['amy'],
       usedThemeIds: ['red'],
       predictedDates: []
     };
@@ -4059,10 +4106,37 @@ class AchievementsEngine {
           }
           if (parsed.trackingData) {
             this.trackingData = { ...this.trackingData, ...parsed.trackingData };
+            // Normalizar 'erizo' histórico a 'amy'
+            if (Array.isArray(this.trackingData.usedPetIds)) {
+              this.trackingData.usedPetIds = this.trackingData.usedPetIds.map(p => p === 'erizo' ? 'amy' : p);
+              if (!this.trackingData.usedPetIds.includes('amy')) this.trackingData.usedPetIds.push('amy');
+            }
+            if (Array.isArray(this.trackingData.usedThemeIds) && !this.trackingData.usedThemeIds.includes('red')) {
+              this.trackingData.usedThemeIds.push('red');
+            }
           }
         } catch (e) {
           console.warn('Error cargando achievements:', e);
         }
+      }
+    }
+
+    // Sincronizar contadores de progreso de logros ocultos
+    const shopAch = this.achievements.find(a => a.id === 'ach-secret-shop');
+    if (shopAch && Array.isArray(this.trackingData.purchasedItemIds)) {
+      shopAch.current = this.trackingData.purchasedItemIds.length;
+      if (shopAch.current >= shopAch.target && !shopAch.claimed) {
+        shopAch.unlocked = true;
+      }
+    }
+
+    const petsThemesAch = this.achievements.find(a => a.id === 'ach-secret-all-pets-themes');
+    if (petsThemesAch) {
+      const uniquePets = new Set((this.trackingData.usedPetIds || ['amy']).map(p => p === 'erizo' ? 'amy' : p));
+      const uniqueThemes = new Set(this.trackingData.usedThemeIds || ['red']);
+      petsThemesAch.current = uniquePets.size + uniqueThemes.size;
+      if (uniquePets.size >= 5 && uniqueThemes.size >= 6 && !petsThemesAch.claimed) {
+        petsThemesAch.unlocked = true;
       }
     }
   }
@@ -4084,11 +4158,73 @@ class AchievementsEngine {
     }
   }
 
+  resolveAchievementId(keyOrId) {
+    if (!keyOrId) return null;
+    const cleanKey = String(keyOrId).trim().toLowerCase().replace(/^ach-/, '');
+    const aliasMap = {
+      'daily-tasks': 'ach-daily-tasks',
+      'daily-task': 'ach-daily-tasks',
+      'daily_tasks': 'ach-daily-tasks',
+      'spotify-songs': 'ach-spotify-songs',
+      'spotify-song': 'ach-spotify-songs',
+      'spotify_songs': 'ach-spotify-songs',
+      'spotify': 'ach-spotify-songs',
+      'analysis-reads': 'ach-analysis-reads',
+      'analysis-read': 'ach-analysis-reads',
+      'analysis_reads': 'ach-analysis-reads',
+      'analytics-read': 'ach-analysis-reads',
+      'analytics-reads': 'ach-analysis-reads',
+      'analytics_read': 'ach-analysis-reads',
+      'ai-conversations': 'ach-ai-conversations',
+      'ai-conversation': 'ach-ai-conversations',
+      'ai_conversations': 'ach-ai-conversations',
+      'ai-chat': 'ach-ai-conversations',
+      'relief-nutrition': 'ach-relief-nutrition',
+      'relief_nutrition': 'ach-relief-nutrition',
+      'nutrition': 'ach-relief-nutrition',
+      'recipes': 'ach-relief-nutrition',
+      'recetas': 'ach-relief-nutrition',
+      'relief-breathing': 'ach-relief-breathing',
+      'relief_breathing': 'ach-relief-breathing',
+      'breathing': 'ach-relief-breathing',
+      'respiracion': 'ach-relief-breathing',
+      'relief-massages': 'ach-relief-massages',
+      'relief_massages': 'ach-relief-massages',
+      'massages-thermo': 'ach-relief-massages',
+      'massages': 'ach-relief-massages',
+      'massage': 'ach-relief-massages',
+      'relief-audios': 'ach-relief-audios',
+      'relief_audios': 'ach-relief-audios',
+      'relief-audio': 'ach-relief-audios',
+      'audio': 'ach-relief-audios',
+      'audios': 'ach-relief-audios',
+      'relief-exercises': 'ach-relief-exercises',
+      'relief_exercises': 'ach-relief-exercises',
+      'exercises': 'ach-relief-exercises',
+      'exercise': 'ach-relief-exercises',
+      'pilates-yoga': 'ach-relief-exercises',
+      'stretches': 'ach-relief-exercises',
+      'cycle-predictions': 'ach-cycle-predictions',
+      'cycle-prediction': 'ach-cycle-predictions',
+      'cycle_predictions': 'ach-cycle-predictions',
+      'predictions': 'ach-cycle-predictions',
+      'prediction': 'ach-cycle-predictions',
+      'secret-shop': 'ach-secret-shop',
+      'secret-unprotected-ovulation': 'ach-secret-unprotected-ovulation',
+      'secret-all-pets-themes': 'ach-secret-all-pets-themes',
+      'secret-report-bug': 'ach-secret-report-bug',
+      'secret-motivation-egg': 'ach-secret-motivation-egg'
+    };
+
+    if (this.achievements.some(a => a.id === keyOrId)) return keyOrId;
+    if (aliasMap[cleanKey]) return aliasMap[cleanKey];
+    if (this.achievements.some(a => a.id === `ach-${cleanKey}`)) return `ach-${cleanKey}`;
+    return null;
+  }
+
   trackProgress(keyOrId, amount = 1) {
-    let ach = this.achievements.find(a => a.id === keyOrId);
-    if (!ach) {
-      ach = this.achievements.find(a => a.id === `ach-${keyOrId}`);
-    }
+    const targetId = this.resolveAchievementId(keyOrId);
+    let ach = this.achievements.find(a => a.id === targetId);
     if (!ach) return { success: false, reason: 'Logro no encontrado' };
 
     ach.current = (ach.current || 0) + amount;
@@ -4105,6 +4241,55 @@ class AchievementsEngine {
       success: true,
       ach: ach,
       newlyUnlocked: newlyUnlocked
+    };
+  }
+
+  recordPetUsage(petId) {
+    if (!petId) return { success: false };
+    const normalized = petId === 'erizo' ? 'amy' : String(petId).toLowerCase();
+    if (!this.trackingData.usedPetIds) this.trackingData.usedPetIds = ['amy'];
+    if (!this.trackingData.usedPetIds.includes(normalized)) {
+      this.trackingData.usedPetIds.push(normalized);
+    }
+    return this.checkAllPetsAndThemes();
+  }
+
+  recordThemeUsage(themeKey) {
+    if (!themeKey) return { success: false };
+    const normalized = String(themeKey).toLowerCase();
+    if (!this.trackingData.usedThemeIds) this.trackingData.usedThemeIds = ['red'];
+    if (!this.trackingData.usedThemeIds.includes(normalized)) {
+      this.trackingData.usedThemeIds.push(normalized);
+    }
+    return this.checkAllPetsAndThemes();
+  }
+
+  checkAllPetsAndThemes() {
+    const allPetKeys = ['amy', 'luffy', 'maomao', 'pipo', 'naveen'];
+    const allThemeKeys = ['red', 'pink', 'green', 'purple', 'blue', 'orange'];
+    
+    const currentPets = (this.trackingData.usedPetIds || ['amy']).map(p => p === 'erizo' ? 'amy' : p);
+    const uniquePets = new Set(currentPets.filter(p => allPetKeys.includes(p)));
+    const uniqueThemes = new Set((this.trackingData.usedThemeIds || ['red']).filter(t => allThemeKeys.includes(t)));
+    
+    const ach = this.achievements.find(a => a.id === 'ach-secret-all-pets-themes');
+    if (ach) {
+      ach.current = uniquePets.size + uniqueThemes.size;
+    }
+
+    let newlyUnlocked = false;
+    if (uniquePets.size >= 5 && uniqueThemes.size >= 6) {
+      const res = this.unlockDirect('ach-secret-all-pets-themes');
+      if (res && res.newlyUnlocked) newlyUnlocked = true;
+    } else {
+      this.saveState();
+    }
+
+    return {
+      uniquePetsCount: uniquePets.size,
+      uniqueThemesCount: uniqueThemes.size,
+      newlyUnlocked: newlyUnlocked,
+      ach: ach
     };
   }
 
@@ -6268,6 +6453,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Trigger de Logro Secreto: Probar las 5 mascotas de la app
+    if (window.achievementsEngine && typeof window.achievementsEngine.recordPetUsage === 'function') {
+      const achPetRes = window.achievementsEngine.recordPetUsage(currentAvatarId);
+      if (achPetRes && achPetRes.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+        showInAppAchievementToast(achPetRes.ach);
+      }
+    }
+
     // 4. Update AI Agent Subview if visible
     const aiFeed = document.getElementById('ai-chat-feed');
     if (aiFeed) {
@@ -7919,7 +8112,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDailyTasksHub();
 
   // ==========================================================================
-  // RENDER NODO 2: TIENDA DE RECOMPENSAS (POCHIROCHO STORE & CYBER-STREET MARKET)
+  // RENDER NODO 2: TIENDA DE RECOMPENSAS & LISTA DE DESEOS
   // ==========================================================================
   function renderShopNodeView() {
     const content = document.getElementById('shop-view-content');
@@ -7933,6 +8126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const shopkeeperImgPath = getAvatarImagePath(randomShopkeeperKey, 'Feliz');
 
     const filtered = shopProducts.filter(p => p.type === currentShopCategory);
+    const wishlist = JSON.parse(localStorage.getItem('pochirocho_user_wishlist') || '[]');
 
     content.innerHTML = `
       <!-- Mostrador de Atención de la Mascota al Azar en Estado Feliz -->
@@ -7942,45 +8136,350 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="shopkeeper-speech-text">
           <strong style="color: var(--gold-accent); font-size: 0.88rem;">${shopPet.name}:</strong><br/>
-          "¡Hola! Canjea tus <strong>Pochipesos 🪙</strong> ganados con tus hábitos en sushi, maquillaje, ropa a elección y premios reales 🛍️✨"
+          ${currentShopCategory === 'wishlist'
+            ? '"¡Sube fotos de ropa, maquillaje o sitios de comida que te encanten! Santiago ya tiene su correo conectado para ver tus gustos 💖"'
+            : '"¡Hola! Canjea tus <strong>Pochipesos 🪙</strong> ganados con tus hábitos en sushi, maquillaje, ropa a elección y premios reales 🛍️✨"'}
         </div>
       </div>
 
-      <!-- Pestañas de Categoría de Productos -->
-      <div class="shop-category-tabs-row">
+      <!-- Pestañas de Categoría de Productos y Lista de Deseos -->
+      <div class="shop-category-tabs-row" style="flex-wrap: wrap; gap: 0.35rem;">
         <button class="shop-tab-btn ${currentShopCategory === 'external' ? 'active' : ''}" onclick="switchShopTab('external')">
-          <span>🎁 Premios en la Vida Real (Salidas, Comida, Ropa)</span>
+          <span>🎁 Premios Vida Real</span>
         </button>
         <button class="shop-tab-btn ${currentShopCategory === 'internal' ? 'active' : ''}" onclick="switchShopTab('internal')">
-          <span>🎮 Objetos del Juego & Sorpresas del Pollo</span>
+          <span>🎮 Objetos del Juego</span>
+        </button>
+        <button class="shop-tab-btn ${currentShopCategory === 'wishlist' ? 'active' : ''}" onclick="switchShopTab('wishlist')">
+          <span>💌 Lista de Deseos (${wishlist.length})</span>
         </button>
       </div>
 
-      <!-- Rejilla de Productos -->
-      <div class="cyber-product-grid">
-        ${filtered.map(p => `
-          <div class="cyber-product-card">
-            <div class="cyber-product-thumb">
-              <span class="cyber-category-tag">${p.cat}</span>
-              <span>${p.icon}</span>
-            </div>
-            <div>
-              <h4 class="cyber-product-title">${p.name}</h4>
-              <p class="cyber-product-desc">${p.desc}</p>
-            </div>
-            <div class="cyber-buy-row">
-              <span class="cyber-price-tag">🪙 ${p.price} Pochipesos</span>
-              <button class="cyber-buy-btn" onclick="buyShopProduct('${p.id}')">Canjear</button>
-            </div>
+      ${currentShopCategory === 'wishlist' ? `
+        <!-- SECCIÓN DE LISTA DE DESEOS (SUBIDA DE FOTOS / ANOTACIONES) -->
+        <div class="wishlist-container" style="display:flex; flex-direction:column; gap:0.8rem; padding-bottom:1.5rem;">
+          
+          <div style="background: linear-gradient(135deg, rgba(230, 57, 70, 0.18), rgba(255, 185, 80, 0.18)); border: 1.5px solid var(--gold-accent); border-radius: 20px; padding: 1rem; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.2rem;">💌✨</div>
+            <h3 style="font-family: var(--font-heading); font-size: 1.05rem; font-weight: 800; color: #ffffff; margin: 0;">Lista de Deseos & Antojos</h3>
+            <p style="font-size: 0.74rem; color: #cbd5e1; margin: 0.4rem 0 0.85rem 0; line-height: 1.38;">
+              Sube fotos (JPG o PNG) de prendas, maquillaje o restaurantes que te gusten para que Santiago conozca su precio y accesibilidad con anticipación. Se guardarán aquí y se enviarán automáticamente a su correo (<code>santisc1304@gmail.com</code>).
+            </p>
+            <button onclick="openAddWishModal()" style="padding: 0.7rem 1.4rem; background: linear-gradient(135deg, var(--rose-accent), var(--gold-accent)); border: none; border-radius: 999px; color: #02040a; font-family: var(--font-heading); font-weight: 800; font-size: 0.85rem; cursor: pointer; box-shadow: 0 0 25px rgba(255, 185, 80, 0.45); display: inline-flex; align-items: center; gap: 0.4rem;">
+              <span class="material-symbols-outlined" style="font-size: 1.1rem;">add_photo_alternate</span>
+              <span>+ Subir Nuevo Deseo o Sugerencia</span>
+            </button>
           </div>
-        `).join('')}
-      </div>
+
+          ${wishlist.length === 0 ? `
+            <div style="text-align: center; padding: 2.2rem 1rem; background: rgba(255,255,255,0.03); border: 1.5px dashed rgba(255,255,255,0.14); border-radius: 20px;">
+              <span style="font-size: 2.8rem; display: block; margin-bottom: 0.5rem;">🛍️💭</span>
+              <h4 style="font-family: var(--font-heading); color: #ffffff; font-size: 0.95rem; margin: 0;">Tu lista de deseos está vacía</h4>
+              <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.35rem 0 0 0;">
+                ¡Toca el botón de arriba para subir fotos de la ropa, maquillaje o comida que te gustaría recibir!
+              </p>
+            </div>
+          ` : `
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+              ${wishlist.map(item => `
+                <div class="wishlist-item-card" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.14); border-radius: 20px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.6rem; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                      <span style="padding: 0.2rem 0.55rem; border-radius: 999px; background: rgba(255, 185, 80, 0.15); border: 1px solid var(--gold-accent); color: var(--gold-accent); font-size: 0.68rem; font-weight: 700;">${item.category || 'General'}</span>
+                      <span style="font-size: 0.68rem; color: #94a3b8;">📆 ${item.date || 'Reciente'}</span>
+                    </div>
+                    <button onclick="deleteWishItem('${item.id}')" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #ef4444; cursor: pointer; padding: 0.3rem 0.5rem; display: flex; align-items: center; gap: 0.2rem; font-size: 0.7rem; font-weight: 700;" title="Eliminar este deseo">
+                      <span class="material-symbols-outlined" style="font-size: 0.95rem;">delete</span>
+                    </button>
+                  </div>
+
+                  <h4 style="font-family: var(--font-heading); font-size: 0.98rem; font-weight: 800; color: #ffffff; margin: 0;">${item.title}</h4>
+
+                  ${item.imageData ? `
+                    <div style="width: 100%; max-height: 240px; border-radius: 14px; overflow: hidden; background: #02040a; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;" onclick="openWishImageModal('${item.id}')" title="Toca para ver foto completa">
+                      <img src="${item.imageData}" style="width: 100%; max-height: 240px; object-fit: contain;" alt="${item.title}" />
+                    </div>
+                  ` : ''}
+
+                  ${item.price ? `
+                    <div style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--cyan-accent); font-weight: 700;">
+                      <span>🏷️ Precio / Presupuesto:</span>
+                      <span style="color: #ffffff;">${item.price}</span>
+                    </div>
+                  ` : ''}
+
+                  ${item.notes ? `
+                    <div style="background: rgba(255,255,255,0.04); border-left: 3px solid var(--rose-accent); padding: 0.55rem 0.75rem; border-radius: 8px; font-size: 0.76rem; color: #cbd5e1; line-height: 1.4;">
+                      ${item.notes}
+                    </div>
+                  ` : ''}
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.7rem;">
+                    <span style="color: #10b981; font-weight: 700;">📬 Enviado a Santiago (santisc1304@gmail.com)</span>
+                    <span style="color: #94a3b8; font-weight: 600;">✓ Registrado</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      ` : `
+        <!-- Rejilla de Productos de la Tienda -->
+        <div class="cyber-product-grid">
+          ${filtered.map(p => `
+            <div class="cyber-product-card">
+              <div class="cyber-product-thumb">
+                <span class="cyber-category-tag">${p.cat}</span>
+                <span>${p.icon}</span>
+              </div>
+              <div>
+                <h4 class="cyber-product-title">${p.name}</h4>
+                <p class="cyber-product-desc">${p.desc}</p>
+              </div>
+              <div class="cyber-buy-row">
+                <span class="cyber-price-tag">🪙 ${p.price} Pochipesos</span>
+                <button class="cyber-buy-btn" onclick="buyShopProduct('${p.id}')">Canjear</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
     `;
   }
 
   window.switchShopTab = function(type) {
     currentShopCategory = type;
     renderShopNodeView();
+  };
+
+  let currentUploadedWishImageBase64 = null;
+
+  window.openAddWishModal = function() {
+    currentUploadedWishImageBase64 = null;
+
+    const modalHTML = `
+      <div class="modal-overlay active" id="add-wish-modal" style="display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,4,10,0.92); backdrop-filter:blur(12px); z-index:99999; padding:1rem;">
+        <div style="background:#0f172a; border:1.5px solid var(--gold-accent); border-radius:24px; padding:1.25rem; max-width:460px; width:100%; max-height:92vh; overflow-y:auto; color:#ffffff; box-shadow:0 25px 60px rgba(0,0,0,0.9); display:flex; flex-direction:column; gap:0.75rem;" class="custom-modal-scroll">
+          
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-size:0.68rem; font-weight:700; color:var(--rose-accent); text-transform:uppercase;">💌 Nueva Sugerencia • Lista de Deseos</span>
+              <h3 style="font-family:var(--font-heading); font-size:1.15rem; font-weight:800; color:#ffffff; margin:0.15rem 0 0 0;">Subir Deseo para Santiago</h3>
+            </div>
+            <button onclick="document.getElementById('add-wish-modal').remove()" style="background:rgba(255,255,255,0.1); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; font-weight:bold;">✕</button>
+          </div>
+
+          <p style="font-size:0.75rem; color:#cbd5e1; line-height:1.35; margin:0;">
+            Sube una foto de lo que te gusta (ropa, maquillaje o restaurantes) o escribe tus notas para que Santiago sepa los detalles con anticipación.
+          </p>
+
+          <!-- 1. Campo de Foto (JPG o PNG) -->
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--gold-accent); margin-bottom:0.35rem;">
+              📸 1. Foto del artículo o lugar (JPG o PNG):
+            </label>
+            <input type="file" id="wish-file-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display:none;" onchange="handleWishImageSelect(event)" />
+            <div id="wish-image-dropzone" onclick="document.getElementById('wish-file-input').click()" style="border: 2px dashed rgba(255, 185, 80, 0.4); border-radius: 16px; padding: 1rem; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.03); transition: all 0.3s ease;">
+              <span class="material-symbols-outlined" style="font-size: 2.2rem; color: var(--gold-accent);">cloud_upload</span>
+              <p id="wish-upload-prompt" style="font-size: 0.74rem; color: #cbd5e1; margin: 0.3rem 0 0 0;">
+                Toca aquí para seleccionar una imagen desde tu galería (JPG / PNG)
+              </p>
+            </div>
+            <div id="wish-image-preview-wrapper" style="display:none; position:relative; margin-top:0.5rem; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); max-height:180px; background:#000;">
+              <img id="wish-image-preview-el" src="" style="width:100%; max-height:180px; object-fit:contain;" alt="Preview" />
+              <button onclick="removeSelectedWishImage(event)" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); border:1px solid #ffffff; color:#ffffff; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold;">✕</button>
+            </div>
+          </div>
+
+          <!-- 2. Categoría -->
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--cyan-accent); margin-bottom:0.35rem;">
+              🏷️ 2. Categoría:
+            </label>
+            <select id="wish-category-select" style="width:100%; padding:0.6rem 0.75rem; background:#1e293b; border:1px solid rgba(255,255,255,0.2); border-radius:12px; color:#ffffff; font-size:0.78rem;">
+              <option value="Maquillaje 💄">Maquillaje 💄</option>
+              <option value="Ropa & Moda 👗">Ropa & Moda 👗</option>
+              <option value="Comida & Restaurante 🍣">Comida & Restaurante 🍣</option>
+              <option value="Accesorios & Joyería 💍">Accesorios & Joyería 💍</option>
+              <option value="Salida o Plan Especial ✨">Salida o Plan Especial ✨</option>
+              <option value="Otro Deseo 💖">Otro Deseo 💖</option>
+            </select>
+          </div>
+
+          <!-- 3. Título / Nombre -->
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#ffffff; margin-bottom:0.35rem;">
+              ✨ 3. Nombre del deseo / sitio:
+            </label>
+            <input type="text" id="wish-title-input" placeholder="Ej: Vestido Zara, Labial Fenty, Crepes & Waffles..." style="width:100%; padding:0.65rem 0.8rem; background:#1e293b; border:1px solid rgba(255,255,255,0.2); border-radius:12px; color:#ffffff; font-size:0.8rem; box-sizing:border-box;" />
+          </div>
+
+          <!-- 4. Precio estimado / Enlace -->
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--gold-accent); margin-bottom:0.35rem;">
+              💰 4. Precio estimado o Link (Opcional):
+            </label>
+            <input type="text" id="wish-price-input" placeholder="Ej: $45.000 COP, o link de la tienda..." style="width:100%; padding:0.65rem 0.8rem; background:#1e293b; border:1px solid rgba(255,255,255,0.2); border-radius:12px; color:#ffffff; font-size:0.8rem; box-sizing:border-box;" />
+          </div>
+
+          <!-- 5. Notas o Especificaciones -->
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#cbd5e1; margin-bottom:0.35rem;">
+              📝 5. Notas / Talla / Sede / Detalles:
+            </label>
+            <textarea id="wish-notes-input" rows="3" placeholder="Ej: Talla M en color beige, o la sede de Unicentro para comer sushi..." style="width:100%; padding:0.65rem 0.8rem; background:#1e293b; border:1px solid rgba(255,255,255,0.2); border-radius:12px; color:#ffffff; font-size:0.78rem; resize:vertical; box-sizing:border-box; font-family:inherit;"></textarea>
+          </div>
+
+          <!-- Botón de Envío -->
+          <button id="btn-submit-wish" onclick="submitWishItem()" style="width:100%; padding:0.85rem; background:linear-gradient(135deg, var(--rose-accent), var(--gold-accent)); border:none; border-radius:18px; color:#02040a; font-family:var(--font-heading); font-weight:800; font-size:0.9rem; cursor:pointer; box-shadow:0 0 25px rgba(255, 185, 80, 0.4); margin-top:0.3rem;">
+            💌 Enviar a Santiago & Guardar en App
+          </button>
+        </div>
+      </div>
+    `;
+
+    const existing = document.getElementById('add-wish-modal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  };
+
+  window.handleWishImageSelect = function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen en formato JPG o PNG.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      currentUploadedWishImageBase64 = evt.target.result;
+      const previewWrapper = document.getElementById('wish-image-preview-wrapper');
+      const previewEl = document.getElementById('wish-image-preview-el');
+      const dropzone = document.getElementById('wish-image-dropzone');
+      if (previewEl) previewEl.src = currentUploadedWishImageBase64;
+      if (previewWrapper) previewWrapper.style.display = 'block';
+      if (dropzone) dropzone.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.removeSelectedWishImage = function(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    currentUploadedWishImageBase64 = null;
+    const previewWrapper = document.getElementById('wish-image-preview-wrapper');
+    const dropzone = document.getElementById('wish-image-dropzone');
+    const fileInput = document.getElementById('wish-file-input');
+    if (previewWrapper) previewWrapper.style.display = 'none';
+    if (dropzone) dropzone.style.display = 'block';
+    if (fileInput) fileInput.value = '';
+  };
+
+  window.submitWishItem = async function() {
+    const titleInput = document.getElementById('wish-title-input');
+    const categorySelect = document.getElementById('wish-category-select');
+    const priceInput = document.getElementById('wish-price-input');
+    const notesInput = document.getElementById('wish-notes-input');
+    const submitBtn = document.getElementById('btn-submit-wish');
+
+    const title = titleInput ? titleInput.value.trim() : '';
+    const category = categorySelect ? categorySelect.value : 'General';
+    const price = priceInput ? priceInput.value.trim() : '';
+    const notes = notesInput ? notesInput.value.trim() : '';
+    const imageData = currentUploadedWishImageBase64;
+
+    if (!title && !imageData && !notes) {
+      alert('Por favor escribe un título, agrega una foto o escribe notas sobre tu deseo.');
+      return;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>⏳ Guardando y notificando a Santiago...</span>';
+    }
+
+    const wishItem = {
+      id: `wish_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      title: title || (imageData ? 'Foto de Deseo' : 'Anotación de Lista'),
+      category: category,
+      price: price,
+      notes: notes,
+      imageData: imageData,
+      date: new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }),
+      timestamp: new Date().toISOString(),
+      status: 'Enviado a Santiago 📬'
+    };
+
+    // 1. Guardar localmente
+    const currentList = JSON.parse(localStorage.getItem('pochirocho_user_wishlist') || '[]');
+    currentList.unshift(wishItem);
+    try {
+      localStorage.setItem('pochirocho_user_wishlist', JSON.stringify(currentList));
+    } catch(e) {
+      console.warn('Error guardando wishlist en localStorage:', e);
+    }
+
+    // 2. Despachar email a santisc1304@gmail.com
+    try {
+      await DeveloperSupportBridge.sendWishlistTicket({
+        title: wishItem.title,
+        category: wishItem.category,
+        priceEstimate: wishItem.price,
+        notes: wishItem.notes,
+        imageDataUrl: wishItem.imageData,
+        timestamp: wishItem.timestamp
+      });
+    } catch (err) {
+      console.warn('Error enviando ticket de wishlist:', err);
+    }
+
+    // 3. Cerrar modal y refrescar vista
+    const modal = document.getElementById('add-wish-modal');
+    if (modal) modal.remove();
+
+    renderShopNodeView();
+
+    showInAppToast({
+      title: '¡Deseo Guardado y Enviado! 💌',
+      message: `"${wishItem.title}" quedó registrado en tu app y se envió a santisc1304@gmail.com`,
+      icon: '🛍️',
+      badgeText: 'Lista de Deseos',
+      badgeIcon: 'favorite',
+      accentColor: 'var(--rose-accent)',
+      duration: 4500
+    });
+  };
+
+  window.deleteWishItem = function(wishId) {
+    if (!confirm('¿Deseas eliminar este deseo de tu lista?')) return;
+    let currentList = JSON.parse(localStorage.getItem('pochirocho_user_wishlist') || '[]');
+    currentList = currentList.filter(w => w.id !== wishId);
+    try {
+      localStorage.setItem('pochirocho_user_wishlist', JSON.stringify(currentList));
+    } catch(e) {}
+    renderShopNodeView();
+  };
+
+  window.openWishImageModal = function(wishId) {
+    const currentList = JSON.parse(localStorage.getItem('pochirocho_user_wishlist') || '[]');
+    const item = currentList.find(w => w.id === wishId);
+    if (!item || !item.imageData) return;
+
+    const modalHTML = `
+      <div class="modal-overlay active" id="wish-image-modal" onclick="this.remove()" style="display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,4,10,0.95); backdrop-filter:blur(15px); z-index:999999; padding:1rem; cursor:pointer;">
+        <div style="max-width:90vw; max-height:90vh; display:flex; flex-direction:column; align-items:center; gap:0.5rem;" onclick="event.stopPropagation()">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center; color:#ffffff;">
+            <span style="font-family:var(--font-heading); font-size:0.95rem; font-weight:700;">${item.title}</span>
+            <button onclick="document.getElementById('wish-image-modal').remove()" style="background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; font-weight:bold;">✕</button>
+          </div>
+          <img src="${item.imageData}" style="max-width:100%; max-height:80vh; object-fit:contain; border-radius:16px; border:1px solid rgba(255,255,255,0.2); box-shadow:0 20px 60px rgba(0,0,0,0.9);" alt="${item.title}" />
+        </div>
+      </div>
+    `;
+    const existing = document.getElementById('wish-image-modal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
   };
 
   window.buyShopProduct = async function(productId) {
@@ -8526,6 +9025,20 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
     const streakCounter = document.getElementById('achievements-streak-counter');
     if (streakCounter) streakCounter.textContent = `${rewardsEngine.streakDays} Días`;
 
+    // Sincronizar contadores dinámicos de logros ocultos
+    const shopAch = achievementsEngine.achievements.find(a => a.id === 'ach-secret-shop');
+    if (shopAch && Array.isArray(achievementsEngine.trackingData.purchasedItemIds)) {
+      shopAch.current = achievementsEngine.trackingData.purchasedItemIds.length;
+      if (shopAch.current >= shopAch.target && !shopAch.claimed) shopAch.unlocked = true;
+    }
+    const petsThemesAch = achievementsEngine.achievements.find(a => a.id === 'ach-secret-all-pets-themes');
+    if (petsThemesAch) {
+      const uniquePets = new Set((achievementsEngine.trackingData.usedPetIds || ['amy']).map(p => p === 'erizo' ? 'amy' : p));
+      const uniqueThemes = new Set(achievementsEngine.trackingData.usedThemeIds || ['red']);
+      petsThemesAch.current = uniquePets.size + uniqueThemes.size;
+      if (uniquePets.size >= 5 && uniqueThemes.size >= 6 && !petsThemesAch.claimed) petsThemesAch.unlocked = true;
+    }
+
     const allAchs = achievementsEngine.achievements;
     const periodicList = allAchs.filter(a => !a.isSecret);
     const secretList = allAchs.filter(a => a.isSecret);
@@ -8773,6 +9286,14 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
     }
 
     currentThemeKey = themeKey;
+
+    // Trigger de Logro Secreto: Probar temas de la app
+    if (window.achievementsEngine && typeof window.achievementsEngine.recordThemeUsage === 'function') {
+      const achThemeRes = window.achievementsEngine.recordThemeUsage(themeKey);
+      if (achThemeRes && achThemeRes.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+        showInAppAchievementToast(achThemeRes.ach);
+      }
+    }
 
     // Sincronizar bolitas activas
     themeDots.forEach(d => {
@@ -9031,6 +9552,14 @@ Genera para ella sus 5 recomendaciones ÚNICAS para hoy, respondiendo SOLAMENTE 
     activeConv.messages.push({ sender: 'user', text: text });
     saveAIConversationsToStorage();
     renderAIAgentView();
+
+    // Trigger de Logro: Consultas y conversaciones con el agente de IA
+    if (window.achievementsEngine) {
+      const achAI = achievementsEngine.trackProgress('ai-conversations', 1);
+      if (achAI && achAI.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+        showInAppAchievementToast(achAI.ach);
+      }
+    }
 
     const feed = document.getElementById('ai-chat-feed');
     const pet = avatarRegistry[currentAvatarId] || avatarRegistry.amy;
@@ -9434,7 +9963,19 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
       </div>
     `;
 
-    // Trigger de Tarea Diaria 3: Leer estadísticas en Análisis solo al hacer scroll hasta el fondo
+    // Trigger de Logro: Leer y estudiar la pantalla de análisis
+    if (window.achievementsEngine) {
+      const now = Date.now();
+      if (!window._lastAnalysisReadTime || (now - window._lastAnalysisReadTime) > 6000) {
+        window._lastAnalysisReadTime = now;
+        const achRes = achievementsEngine.trackProgress('analysis-reads', 1);
+        if (achRes && achRes.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+          showInAppAchievementToast(achRes.ach);
+        }
+      }
+    }
+
+    // Trigger de Tarea Diaria 3: Leer estadísticas en Análisis al hacer scroll hasta el fondo
     const trendsContainer = subview.querySelector('.trends-container');
     if (trendsContainer) {
       trendsContainer.addEventListener('scroll', () => {
@@ -9444,8 +9985,10 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
           if (taskRes && taskRes.success && taskRes.earned > 0) {
             updateCoinsUI();
             renderDailyTasksHub();
-            const achRes = achievementsEngine.trackProgress('analytics-read', 1);
-            if (achRes && achRes.newlyUnlocked) showInAppAchievementToast(achRes.ach);
+            const achRes = achievementsEngine.trackProgress('analysis-reads', 1);
+            if (achRes && achRes.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+              showInAppAchievementToast(achRes.ach);
+            }
           }
         }
       });
@@ -9454,7 +9997,17 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
   window.prevCalMonth = function() { currentCalMonth--; if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } renderCalendarView(); };
   window.nextCalMonth = function() { currentCalMonth++; if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendarView(); };
-  window.selectCalendarDay = function(dateStr) { selectedCalDateStr = dateStr; renderCalendarView(); };
+  window.selectCalendarDay = function(dateStr) {
+    selectedCalDateStr = dateStr;
+    const todayStr = formatDateKey(new Date());
+    if (dateStr > todayStr && window.achievementsEngine) {
+      const predAch = achievementsEngine.trackProgress('cycle-predictions', 1);
+      if (predAch && predAch.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+        showInAppAchievementToast(predAch.ach);
+      }
+    }
+    renderCalendarView();
+  };
 
   // =========================================================================
   // MINI CALENDARIO ESTÉTICO & CALCULADORA DE FECHAS FUTURAS
@@ -10451,6 +11004,14 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
     isAudioSleepTimerActive = false;
     if (audioSleepTimerInterval) clearInterval(audioSleepTimerInterval);
 
+    // Trigger de Logro: Escuchar audios de relajación de la pantalla de alivio
+    if (window.achievementsEngine) {
+      const achAud = achievementsEngine.trackProgress('relief-audios', 1);
+      if (achAud && achAud.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+        showInAppAchievementToast(achAud.ach);
+      }
+    }
+
     const audioSource = routine.audioUrl || routine.audioPath || 'assets/audio/cardboard_box_tapping_asmr.mp3';
 
     const modalHTML = `
@@ -10886,17 +11447,28 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
     renderDailyTasksHub();
 
     // Trigger de Logros según categoría de alivio
-    if (activeRoutine && activeRoutine.catId) {
-      let achCatKey = '';
-      if (activeRoutine.catId === 'nutrition') achCatKey = 'relief-nutrition';
-      else if (activeRoutine.catId === 'breathing') achCatKey = 'relief-breathing';
-      else if (activeRoutine.catId === 'massages' || activeRoutine.catId === 'massage') achCatKey = 'relief-massages';
-      else if (activeRoutine.catId === 'audio') achCatKey = 'relief-audios';
-      else achCatKey = 'relief-exercises';
+    if (activeRoutine) {
+      let achCatKey = 'relief-exercises';
+      const cat = (activeRoutine.catId || '').toLowerCase();
+      const type = (activeRoutine.type || '').toLowerCase();
 
-      const achRes = achievementsEngine.trackProgress(achCatKey, 1);
-      if (achRes.newlyUnlocked) {
-        showInAppAchievementToast(achRes.ach);
+      if (cat === 'nutrition' || type.includes('recipe')) {
+        achCatKey = 'relief-nutrition';
+      } else if (cat === 'breathing' || type.includes('breathing')) {
+        achCatKey = 'relief-breathing';
+      } else if (cat === 'massages-thermo' || cat === 'massages' || cat === 'massage' || type.includes('massage')) {
+        achCatKey = 'relief-massages';
+      } else if (cat === 'audio' || type.includes('audio')) {
+        achCatKey = 'relief-audios';
+      } else {
+        achCatKey = 'relief-exercises';
+      }
+
+      if (window.achievementsEngine) {
+        const achRes = achievementsEngine.trackProgress(achCatKey, 1);
+        if (achRes && achRes.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+          showInAppAchievementToast(achRes.ach);
+        }
       }
     }
 
@@ -11536,10 +12108,14 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
 
     // Trigger de Logro Secreto: Sexo sin protección en Ovulación
     const currentActivePhase = userCycleState.currentPhase || 'Ovulatoria';
-    const isUnprotectedSelected = Array.from(document.querySelectorAll('.symptom-toggle-btn.selected')).some(b => b.textContent.includes('Sin Protección'));
-    if (isUnprotectedSelected && currentActivePhase.toLowerCase().includes('ovulat')) {
+    const targetDateObj = parseSafeDate(targetDateKey);
+    const datePhase = getCyclePhaseForDate(targetDateObj);
+    const isOvulationPhase = (datePhase && datePhase.phaseName && datePhase.phaseName.toLowerCase().includes('ovulat')) || (currentActivePhase && currentActivePhase.toLowerCase().includes('ovulat'));
+    const isUnprotected = (intimacyType === 'Sin Protección') || Array.from(document.querySelectorAll('.symptom-toggle-btn.selected')).some(b => b.textContent.includes('Sin Protección'));
+
+    if (isUnprotected && isOvulationPhase && window.achievementsEngine) {
       const secretSexAch = achievementsEngine.unlockDirect('ach-secret-unprotected-ovulation');
-      if (secretSexAch.newlyUnlocked) {
+      if (secretSexAch && secretSexAch.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
         showInAppAchievementToast(secretSexAch.ach);
       }
     }
@@ -12033,6 +12609,13 @@ Genera para ella un reporte analítico de alto valor biológico respondiendo ÚN
       userProfile.mascotaSeleccionada = avatarId;
       localStorage.setItem('pochirocho_user_profile', JSON.stringify(userProfile));
     } catch(e) {}
+
+    if (window.achievementsEngine && typeof window.achievementsEngine.recordPetUsage === 'function') {
+      const achPetRes = window.achievementsEngine.recordPetUsage(avatarId);
+      if (achPetRes && achPetRes.newlyUnlocked && typeof showInAppAchievementToast === 'function') {
+        showInAppAchievementToast(achPetRes.ach);
+      }
+    }
 
     const btns = document.querySelectorAll('.settings-avatar-btn');
     btns.forEach(b => {

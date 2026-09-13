@@ -278,7 +278,7 @@ export class AchievementsEngine {
 
     this.trackingData = {
       purchasedItemIds: [],
-      usedPetIds: ['erizo'],
+      usedPetIds: ['amy'],
       usedThemeIds: ['red'],
       predictedDates: []
     };
@@ -306,10 +306,37 @@ export class AchievementsEngine {
           }
           if (parsed.trackingData) {
             this.trackingData = { ...this.trackingData, ...parsed.trackingData };
+            // Normalizar 'erizo' histórico a 'amy'
+            if (Array.isArray(this.trackingData.usedPetIds)) {
+              this.trackingData.usedPetIds = this.trackingData.usedPetIds.map(p => p === 'erizo' ? 'amy' : p);
+              if (!this.trackingData.usedPetIds.includes('amy')) this.trackingData.usedPetIds.push('amy');
+            }
+            if (Array.isArray(this.trackingData.usedThemeIds) && !this.trackingData.usedThemeIds.includes('red')) {
+              this.trackingData.usedThemeIds.push('red');
+            }
           }
         } catch (e) {
           console.warn('Error cargando achievements:', e);
         }
+      }
+    }
+
+    // Sincronizar contadores de progreso de logros ocultos
+    const shopAch = this.achievements.find(a => a.id === 'ach-secret-shop');
+    if (shopAch && Array.isArray(this.trackingData.purchasedItemIds)) {
+      shopAch.current = this.trackingData.purchasedItemIds.length;
+      if (shopAch.current >= shopAch.target && !shopAch.claimed) {
+        shopAch.unlocked = true;
+      }
+    }
+
+    const petsThemesAch = this.achievements.find(a => a.id === 'ach-secret-all-pets-themes');
+    if (petsThemesAch) {
+      const uniquePets = new Set((this.trackingData.usedPetIds || ['amy']).map(p => p === 'erizo' ? 'amy' : p));
+      const uniqueThemes = new Set(this.trackingData.usedThemeIds || ['red']);
+      petsThemesAch.current = uniquePets.size + uniqueThemes.size;
+      if (uniquePets.size >= 5 && uniqueThemes.size >= 6 && !petsThemesAch.claimed) {
+        petsThemesAch.unlocked = true;
       }
     }
   }
@@ -331,11 +358,73 @@ export class AchievementsEngine {
     }
   }
 
+  resolveAchievementId(keyOrId) {
+    if (!keyOrId) return null;
+    const cleanKey = String(keyOrId).trim().toLowerCase().replace(/^ach-/, '');
+    const aliasMap = {
+      'daily-tasks': 'ach-daily-tasks',
+      'daily-task': 'ach-daily-tasks',
+      'daily_tasks': 'ach-daily-tasks',
+      'spotify-songs': 'ach-spotify-songs',
+      'spotify-song': 'ach-spotify-songs',
+      'spotify_songs': 'ach-spotify-songs',
+      'spotify': 'ach-spotify-songs',
+      'analysis-reads': 'ach-analysis-reads',
+      'analysis-read': 'ach-analysis-reads',
+      'analysis_reads': 'ach-analysis-reads',
+      'analytics-read': 'ach-analysis-reads',
+      'analytics-reads': 'ach-analysis-reads',
+      'analytics_read': 'ach-analysis-reads',
+      'ai-conversations': 'ach-ai-conversations',
+      'ai-conversation': 'ach-ai-conversations',
+      'ai_conversations': 'ach-ai-conversations',
+      'ai-chat': 'ach-ai-conversations',
+      'relief-nutrition': 'ach-relief-nutrition',
+      'relief_nutrition': 'ach-relief-nutrition',
+      'nutrition': 'ach-relief-nutrition',
+      'recipes': 'ach-relief-nutrition',
+      'recetas': 'ach-relief-nutrition',
+      'relief-breathing': 'ach-relief-breathing',
+      'relief_breathing': 'ach-relief-breathing',
+      'breathing': 'ach-relief-breathing',
+      'respiracion': 'ach-relief-breathing',
+      'relief-massages': 'ach-relief-massages',
+      'relief_massages': 'ach-relief-massages',
+      'massages-thermo': 'ach-relief-massages',
+      'massages': 'ach-relief-massages',
+      'massage': 'ach-relief-massages',
+      'relief-audios': 'ach-relief-audios',
+      'relief_audios': 'ach-relief-audios',
+      'relief-audio': 'ach-relief-audios',
+      'audio': 'ach-relief-audios',
+      'audios': 'ach-relief-audios',
+      'relief-exercises': 'ach-relief-exercises',
+      'relief_exercises': 'ach-relief-exercises',
+      'exercises': 'ach-relief-exercises',
+      'exercise': 'ach-relief-exercises',
+      'pilates-yoga': 'ach-relief-exercises',
+      'stretches': 'ach-relief-exercises',
+      'cycle-predictions': 'ach-cycle-predictions',
+      'cycle-prediction': 'ach-cycle-predictions',
+      'cycle_predictions': 'ach-cycle-predictions',
+      'predictions': 'ach-cycle-predictions',
+      'prediction': 'ach-cycle-predictions',
+      'secret-shop': 'ach-secret-shop',
+      'secret-unprotected-ovulation': 'ach-secret-unprotected-ovulation',
+      'secret-all-pets-themes': 'ach-secret-all-pets-themes',
+      'secret-report-bug': 'ach-secret-report-bug',
+      'secret-motivation-egg': 'ach-secret-motivation-egg'
+    };
+
+    if (this.achievements.some(a => a.id === keyOrId)) return keyOrId;
+    if (aliasMap[cleanKey]) return aliasMap[cleanKey];
+    if (this.achievements.some(a => a.id === `ach-${cleanKey}`)) return `ach-${cleanKey}`;
+    return null;
+  }
+
   trackProgress(keyOrId, amount = 1) {
-    let ach = this.achievements.find(a => a.id === keyOrId);
-    if (!ach) {
-      ach = this.achievements.find(a => a.id === `ach-${keyOrId}`);
-    }
+    const targetId = this.resolveAchievementId(keyOrId);
+    let ach = this.achievements.find(a => a.id === targetId);
     if (!ach) return { success: false, reason: 'Logro no encontrado' };
 
     ach.current = (ach.current || 0) + amount;
@@ -352,6 +441,55 @@ export class AchievementsEngine {
       success: true,
       ach: ach,
       newlyUnlocked: newlyUnlocked
+    };
+  }
+
+  recordPetUsage(petId) {
+    if (!petId) return { success: false };
+    const normalized = petId === 'erizo' ? 'amy' : String(petId).toLowerCase();
+    if (!this.trackingData.usedPetIds) this.trackingData.usedPetIds = ['amy'];
+    if (!this.trackingData.usedPetIds.includes(normalized)) {
+      this.trackingData.usedPetIds.push(normalized);
+    }
+    return this.checkAllPetsAndThemes();
+  }
+
+  recordThemeUsage(themeKey) {
+    if (!themeKey) return { success: false };
+    const normalized = String(themeKey).toLowerCase();
+    if (!this.trackingData.usedThemeIds) this.trackingData.usedThemeIds = ['red'];
+    if (!this.trackingData.usedThemeIds.includes(normalized)) {
+      this.trackingData.usedThemeIds.push(normalized);
+    }
+    return this.checkAllPetsAndThemes();
+  }
+
+  checkAllPetsAndThemes() {
+    const allPetKeys = ['amy', 'luffy', 'maomao', 'pipo', 'naveen'];
+    const allThemeKeys = ['red', 'pink', 'green', 'purple', 'blue', 'orange'];
+    
+    const currentPets = (this.trackingData.usedPetIds || ['amy']).map(p => p === 'erizo' ? 'amy' : p);
+    const uniquePets = new Set(currentPets.filter(p => allPetKeys.includes(p)));
+    const uniqueThemes = new Set((this.trackingData.usedThemeIds || ['red']).filter(t => allThemeKeys.includes(t)));
+    
+    const ach = this.achievements.find(a => a.id === 'ach-secret-all-pets-themes');
+    if (ach) {
+      ach.current = uniquePets.size + uniqueThemes.size;
+    }
+
+    let newlyUnlocked = false;
+    if (uniquePets.size >= 5 && uniqueThemes.size >= 6) {
+      const res = this.unlockDirect('ach-secret-all-pets-themes');
+      if (res && res.newlyUnlocked) newlyUnlocked = true;
+    } else {
+      this.saveState();
+    }
+
+    return {
+      uniquePetsCount: uniquePets.size,
+      uniqueThemesCount: uniqueThemes.size,
+      newlyUnlocked: newlyUnlocked,
+      ach: ach
     };
   }
 

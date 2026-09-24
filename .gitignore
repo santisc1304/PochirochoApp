@@ -14,3 +14,8 @@ scratch/
 *.log
 .gemini/
 .antigravity/
+
+# User Export Data (Flo / Private Health Data)
+Registro_Previo_Flo/
+*.flo.json
+*.flo.txt

@@ -22,7 +22,7 @@
   <link rel="manifest" href="manifest.json" />
 
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=37.0" />
+  <link rel="stylesheet" href="css/style.css?v=38.0" />
 </head>
 
 <body>
@@ -366,9 +366,9 @@
                     <span id="btn-ob-flo-text">Transferir desde Flo 🌸</span>
                   </button>
                   <input type="file" id="ob-flo-csv-input" accept=".csv,.json,.txt" style="display:none;" onchange="importFloFileFromOnboarding(this)" />
-                  <button type="button" class="ob-btn-flo-file" onclick="document.getElementById('ob-flo-csv-input').click()" title="Subir reporte real JSON o CSV de Flo">
+                  <button type="button" class="ob-btn-flo-file" onclick="document.getElementById('ob-flo-csv-input').click()" title="Subir reporte real JSON, TXT (res.txt) o CSV de Flo">
                     <span class="material-symbols-outlined" style="font-size: 1.05rem;">upload_file</span>
-                    <span>Subir Archivo (.csv/.json)</span>
+                    <span>Subir Archivo (.json/.txt/.csv)</span>
                   </button>
                 </div>
               </div>
@@ -490,9 +490,9 @@
               <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 600;">— O sube tu archivo exportado de Flo —</span>
             </div>
             <input type="file" id="flo-modal-file-input" accept=".csv,.json,.txt" style="display:none;" onchange="importFloFileFromModal(this)" />
-            <button type="button" class="ob-btn-flo-file" onclick="document.getElementById('flo-modal-file-input').click()" style="width: 100%; justify-content: center; padding: 0.55rem; background: rgba(255, 77, 109, 0.15); border: 1px solid rgba(255, 77, 109, 0.4); border-radius: 10px; color: #ff758f; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;" title="Subir archivo .json o .csv de Flo para eliminar simulaciones y leer datos reales">
+            <button type="button" class="ob-btn-flo-file" onclick="document.getElementById('flo-modal-file-input').click()" style="width: 100%; justify-content: center; padding: 0.55rem; background: rgba(255, 77, 109, 0.15); border: 1px solid rgba(255, 77, 109, 0.4); border-radius: 10px; color: #ff758f; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;" title="Subir archivo .json, .txt (res.txt) o .csv de Flo para eliminar simulaciones y leer datos reales">
               <span class="material-symbols-outlined" style="font-size: 1.05rem;">upload_file</span>
-              <span>Subir Archivo Real (.json o .csv)</span>
+              <span>Subir Archivo Real (.json, .txt o .csv)</span>
             </button>
           </div>
 
@@ -852,12 +852,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/particles.js?v=37.0"></script>
-  <script src="js/app.js?v=37.0"></script>
+  <script src="js/particles.js?v=38.0"></script>
+  <script src="js/app.js?v=38.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=37.0')
+        navigator.serviceWorker.register('./sw.js?v=38.0')
           .then(reg => {
             console.log('PWA Service Worker activo 🟢 (Scope:', reg.scope, ')');
             reg.update();
